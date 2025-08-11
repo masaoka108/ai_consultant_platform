@@ -2,29 +2,98 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { Layout } from '../components/Layout';
 import { TalentCard } from '../components/TalentCard';
+import { RealtimeVoiceControls } from '../components/RealtimeVoiceControls';
 import { consultants } from '../data/consultants';
 import { mockTalents, questionFlow, hotReadingResponses, coldReadingResponses, subsidyRecommendations, finalSummary, userResponses } from '../data/mockData';
-import { Message } from '../types';
+import { Message, RealtimeMessage } from '../types';
 import { Send, User, Bot, Mic, MicOff, Volume2, Phone, PhoneOff } from 'lucide-react';
+import { useRealtimeConnection } from '../hooks/useRealtimeConnection';
 
 export const ConsultantDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  
+  // WebRTC接続の状態管理
+  const { state, actions } = useRealtimeConnection();
+  
+  // 既存の状態（フォールバック用）
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [phase, setPhase] = useState<'questions' | 'hot-reading' | 'cold-reading' | 'subsidies' | 'summary' | 'recommendations'>('questions');
-  const [isCallActive, setIsCallActive] = useState(true);
-  const [isMuted, setIsMuted] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
-  const [isSpeaking, setIsSpeaking] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const [hasSpokenWelcome, setHasSpokenWelcome] = useState(false);
   const [subsidyIndex, setSubsidyIndex] = useState(0);
   const [audioIndex, setAudioIndex] = useState(1);
   const audioRef = useRef<HTMLAudioElement>(null);
-  const [isConversationStarted, setIsConversationStarted] = useState(false);
+  const [hasSpokenWelcome, setHasSpokenWelcome] = useState(false);
+  
+  // UI状態
+  const [isRecording, setIsRecording] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [useWebRTC, setUseWebRTC] = useState(true); // WebRTC/フォールバック切り替え
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const consultant = consultants.find(c => c.id === id);
+  
+  // WebRTCまたはフォールバックの状態を統一
+  const isConnected = useWebRTC ? state.isConnected : hasSpokenWelcome;
+  const currentPhase = useWebRTC ? state.conversationPhase : getPhaseFromMessageCount();
+  const currentMessages = useWebRTC ? convertRealtimeMessagesToMessages(state.messageHistory) : messages;
+
+  // ヘルパー関数: メッセージ数からフェーズを推測
+  function getPhaseFromMessageCount(): 'questions' | 'hot-reading' | 'cold-reading' | 'subsidies' | 'summary' | 'recommendations' {
+    if (messages.length <= 6) return 'questions';
+    if (messages.length <= 10) return 'hot-reading';
+    if (messages.length <= 14) return 'cold-reading';
+    if (messages.length <= 18) return 'subsidies';
+    if (messages.length <= 20) return 'summary';
+    return 'recommendations';
+  }
+
+  // ヘルパー関数: RealtimeメッセージをMessageに変換
+  function convertRealtimeMessagesToMessages(realtimeHistory: Array<{ role: 'user' | 'assistant'; content: string; timestamp: number }>): Message[] {
+    return realtimeHistory.map((msg, index) => ({
+      id: `realtime-${index}`,
+      type: msg.role === 'user' ? 'user' : 'consultant',
+      content: msg.content,
+      timestamp: new Date(msg.timestamp),
+      isAudio: msg.role === 'assistant'
+    }));
+  }
+
+  // WebRTC接続開始
+  const handleStartWebRTCCall = async () => {
+    if (!id) return;
+    
+    try {
+      await actions.connect(id);
+    } catch (error) {
+      console.error('WebRTC接続エラー:', error);
+      // エラー時はフォールバックモードに切り替え
+      setUseWebRTC(false);
+      handleStartCall(); // 既存のフォールバック処理
+    }
+  };
+
+  // 通話終了（WebRTC）
+  const handleEndWebRTCCall = async () => {
+    await actions.disconnect();
+  };
+
+  // フォールバックモードへの切り替え
+  const handleSwitchToFallback = () => {
+    setUseWebRTC(false);
+    actions.clearError();
+    // フォールバック開始
+    if (!hasSpokenWelcome) {
+      handleStartCall();
+    }
+  };
+
+  // 再接続試行
+  const handleRetryConnection = async () => {
+    if (state.error) {
+      actions.clearError();
+    }
+    await actions.retry();
+  };
 
   // 音声ファイルを再生する関数
   const playAudioFile = (audioNumber?: number) => {
@@ -245,19 +314,22 @@ export const ConsultantDetailPage: React.FC = () => {
 
         {/* メインコンテンツエリア */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* 左側: ビデオ通話エリア */}
-          <div className="lg:col-span-2">
-            <div className="bg-white rounded-xl shadow-sm h-[600px] flex flex-col">
-              {/* ビデオ画面 */}
-              <div className="relative bg-gray-900 rounded-t-xl overflow-hidden" style={{ aspectRatio: '16/9' }}>
-                {!isConversationStarted ? (
+          {/* 左側: 通話エリア */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* ビデオ画面 */}
+            <div className="bg-white rounded-xl shadow-sm h-[400px] flex flex-col">
+              <div className="relative bg-gray-900 rounded-t-xl overflow-hidden flex-1">
+                {!isConnected ? (
                   <div className="w-full h-full flex items-center justify-center">
                     <button
-                      onClick={handleStartCall}
-                      className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-4 rounded-lg text-lg font-semibold transition-colors flex items-center space-x-2"
+                      onClick={useWebRTC ? handleStartWebRTCCall : handleStartCall}
+                      disabled={state.connectionState === 'connecting'}
+                      className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white px-8 py-4 rounded-lg text-lg font-semibold transition-colors flex items-center space-x-2"
                     >
                       <Phone size={24} />
-                      <span>通話を開始</span>
+                      <span>
+                        {state.connectionState === 'connecting' ? '接続中...' : '通話を開始'}
+                      </span>
                     </button>
                   </div>
                 ) : (
@@ -269,45 +341,65 @@ export const ConsultantDetailPage: React.FC = () => {
                 )}
 
                 {/* 通話状態インジケーター */}
-                {isConversationStarted && (
+                {isConnected && (
                   <div className="absolute top-4 left-4">
-                  <div className="flex items-center space-x-2 bg-black bg-opacity-50 rounded-full px-3 py-1">
-                    <div className={`w-2 h-2 rounded-full ${isCallActive ? 'bg-green-400' : 'bg-red-400'}`}></div>
-                    <span className="text-white text-sm">
-                      {isCallActive ? '通話中' : '切断'}
-                    </span>
-                  </div>
-                  </div>
-                )}
-
-                {/* 音声出力インジケーター */}
-                {isConversationStarted && isSpeaking && (
-                  <div className="absolute top-4 right-4">
-                    <div className="flex items-center space-x-2 bg-blue-500 bg-opacity-80 rounded-full px-3 py-1">
-                      <Volume2 className="text-white animate-pulse" size={16} />
-                      <span className="text-white text-sm">話しています</span>
+                    <div className="flex items-center space-x-2 bg-black bg-opacity-50 rounded-full px-3 py-1">
+                      <div className={`w-2 h-2 rounded-full ${
+                        useWebRTC 
+                          ? (state.isConnected ? 'bg-green-400' : 'bg-yellow-400')
+                          : 'bg-green-400'
+                      }`}></div>
+                      <span className="text-white text-sm">
+                        {useWebRTC 
+                          ? (state.isConnected ? 'リアルタイム通話中' : 'WebRTC接続中')
+                          : 'フォールバック通話中'
+                        }
+                      </span>
                     </div>
                   </div>
                 )}
 
-                {/* 音声入力インジケーター */}
+                {/* 音声出力インジケーター */}
+                {isConnected && (isSpeaking || state.isVoiceActive) && (
+                  <div className="absolute top-4 right-4">
+                    <div className="flex items-center space-x-2 bg-blue-500 bg-opacity-80 rounded-full px-3 py-1">
+                      <Volume2 className="text-white animate-pulse" size={16} />
+                      <span className="text-white text-sm">
+                        {useWebRTC ? 'AI応答中' : '話しています'}
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
+            </div>
 
-              {/* 通話コントロール */}
-              <div className="p-4 bg-gray-50 rounded-b-xl">
+            {/* WebRTC音声コントロール */}
+            {useWebRTC && (
+              <RealtimeVoiceControls
+                isConnected={state.isConnected}
+                connectionState={state.connectionState}
+                isMuted={state.isMuted}
+                isRemoteMuted={state.isRemoteMuted}
+                audioLevel={state.audioLevel}
+                isVoiceActive={state.isVoiceActive}
+                conversationPhase={state.conversationPhase}
+                error={state.error}
+                isFallbackMode={state.isFallbackMode}
+                onStartCall={handleStartWebRTCCall}
+                onEndCall={handleEndWebRTCCall}
+                onToggleMute={actions.toggleMute}
+                onToggleRemoteMute={actions.toggleRemoteMute}
+                onVolumeChange={actions.setVolume}
+                onRetryConnection={handleRetryConnection}
+                onSwitchToFallback={handleSwitchToFallback}
+              />
+            )}
+
+            {/* フォールバック用の簡易コントロール */}
+            {!useWebRTC && isConnected && (
+              <div className="bg-white rounded-xl shadow-sm p-4">
                 <div className="flex items-center justify-center space-x-4">
-                  {isConversationStarted && (
-                    <>
-                      {/* <button
-                    onClick={() => setIsMuted(!isMuted)}
-                    className={`p-3 rounded-full transition-colors ${
-                      isMuted ? 'bg-red-500 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                    }`}
-                      >
-                    {isMuted ? <MicOff size={20} /> : <Mic size={20} />}
-                      </button> */}
-
-                      <button
+                  <button
                     onClick={handleVoiceInput}
                     disabled={isRecording}
                     className={`p-4 rounded-full transition-colors ${
@@ -315,48 +407,25 @@ export const ConsultantDetailPage: React.FC = () => {
                         ? 'bg-red-500 text-white animate-pulse'
                         : 'bg-indigo-500 hover:bg-indigo-600 text-white'
                     }`}
-                      >
+                  >
                     <Mic size={24} />
-                      </button>
+                  </button>
 
-                      {/* <button
-                    onClick={stopAudio}
-                    disabled={!isSpeaking}
-                    className={`p-3 rounded-full transition-colors ${
-                      isSpeaking
-                        ? 'bg-blue-500 hover:bg-blue-600 text-white'
-                        : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                    }`}
-                    title="音声停止"
-                      >
-                    <Volume2 size={20} />
-                      </button> */}
-
-                      <button
-                    onClick={() => setIsCallActive(!isCallActive)}
-                    className={`p-3 rounded-full transition-colors ${
-                      isCallActive ? 'bg-red-500 hover:bg-red-600 text-white' : 'bg-green-500 hover:bg-green-600 text-white'
-                    }`}
-                      >
-                    {isCallActive ? <PhoneOff size={20} /> : <Phone size={20} />}
-                      </button>
-                    </>
-                  )}
+                  <button
+                    onClick={() => setUseWebRTC(true)}
+                    className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors text-sm"
+                  >
+                    WebRTCに切り替え
+                  </button>
                 </div>
 
-                {isConversationStarted && isRecording && (
+                {isRecording && (
                   <div className="text-center mt-2">
                     <p className="text-sm text-red-600">音声を録音中...</p>
                   </div>
                 )}
-
-                {isConversationStarted && isSpeaking && (
-                  <div className="text-center mt-2">
-                    <p className="text-sm text-blue-600">AIが話しています...</p>
-                  </div>
-                )}
               </div>
-            </div>
+            )}
           </div>
 
           {/* 右側: チャット履歴 */}
@@ -368,7 +437,7 @@ export const ConsultantDetailPage: React.FC = () => {
 
               {/* メッセージ一覧 */}
               <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0">
-                {messages.map((message) => (
+                {currentMessages.map((message) => (
                   <div
                     key={message.id}
                     className={`flex items-start space-x-2 ${
@@ -388,7 +457,7 @@ export const ConsultantDetailPage: React.FC = () => {
                         : 'bg-gray-100 text-gray-900'
                     }`}>
                       <p>{message.content}</p>
-                      {message.isAudio && (
+                      {message.isAudio && !useWebRTC && (
                         <button
                           onClick={playAudioFile}
                           className="mt-1 text-xs opacity-70 hover:opacity-100 transition-opacity flex items-center space-x-1"
@@ -396,6 +465,14 @@ export const ConsultantDetailPage: React.FC = () => {
                           <Volume2 size={12} />
                           <span>再生</span>
                         </button>
+                      )}
+                      {useWebRTC && (
+                        <div className="mt-1 text-xs opacity-70">
+                          <span className="flex items-center space-x-1">
+                            <Volume2 size={12} />
+                            <span>リアルタイム音声</span>
+                          </span>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -427,7 +504,7 @@ export const ConsultantDetailPage: React.FC = () => {
         </div>
 
         {/* 人材紹介カード */}
-        {phase === 'recommendations' && (
+        {currentPhase === 'recommendations' && (
           <div className="mt-8 space-y-4">
             <h2 className="text-xl font-bold text-gray-900">おすすめ人材</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

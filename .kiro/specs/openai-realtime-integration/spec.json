@@ -1,0 +1,48 @@
+{
+  "name": "openai-realtime-integration",
+  "title": "OpenAI Realtime API統合",
+  "description": "コンサル画面で対話を行うデモをOpenAIのRealtime APIを利用して対話できる仕様に変更する",
+  "created_at": "2025-08-11T00:00:00Z",
+  "updated_at": "2025-08-11T00:00:00Z",
+  "status": "tasks_generated",
+  "phases": {
+    "requirements": {
+      "status": "completed",
+      "completed_at": "2025-08-11T00:00:00Z",
+      "approved": true,
+      "files": [
+        "requirements.md"
+      ]
+    },
+    "design": {
+      "status": "completed",
+      "completed_at": "2025-08-11T14:30:00Z",
+      "approved": true,
+      "files": ["design.md"]
+    },
+    "tasks": {
+      "status": "completed",
+      "completed_at": "2025-08-11T15:00:00Z",
+      "approved": false,
+      "files": ["tasks.md"]
+    },
+    "implementation": {
+      "status": "pending",
+      "files": []
+    }
+  },
+  "target_files": [
+    "src/pages/ConsultantDetailPage.tsx"
+  ],
+  "dependencies": [
+    "@types/web-audio-api",
+    "ws",
+    "@types/ws"
+  ],
+  "environment_variables": [
+    "VITE_OPENAI_API_KEY",
+    "VITE_OPENAI_REALTIME_URL",
+    "VITE_AUDIO_SAMPLE_RATE",
+    "VITE_ENABLE_FALLBACK"
+  ]
+}

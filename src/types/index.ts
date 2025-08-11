@@ -33,3 +33,6 @@ export interface ConversationHistory {
   messages: Message[];
   recommendedTalents: TalentCard[];
 }
+
+// WebRTC related exports
+export * from './webrtc';

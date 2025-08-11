@@ -319,26 +319,20 @@ export const ConsultantDetailPage: React.FC = () => {
             {/* ビデオ画面 */}
             <div className="bg-white rounded-xl shadow-sm h-[400px] flex flex-col">
               <div className="relative bg-gray-900 rounded-t-xl overflow-hidden flex-1">
-                {!isConnected ? (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <button
-                      onClick={useWebRTC ? handleStartWebRTCCall : handleStartCall}
-                      disabled={state.connectionState === 'connecting'}
-                      className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white px-8 py-4 rounded-lg text-lg font-semibold transition-colors flex items-center space-x-2"
-                    >
-                      <Phone size={24} />
-                      <span>
-                        {state.connectionState === 'connecting' ? '接続中...' : '通話を開始'}
-                      </span>
-                    </button>
-                  </div>
-                ) : (
-                  <img
-                    src={consultant.avatar}
-                    alt={consultant.name}
-                    className="w-full h-full object-cover object-center"
-                  />
-                )}
+                {/* 背景画像を常に表示 */}
+                <div 
+                  className="absolute inset-0 w-full h-full bg-cover bg-center bg-no-repeat"
+                  style={{ 
+                    backgroundImage: 'url(/gomita_san_thumbnail.png)',
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center'
+                  }}
+                />
+                
+                {/* 通話状態に関係なく背景画像のみ表示 */}
+                <div className="relative z-10 w-full h-full">
+                  {/* 背景画像がそのまま表示される */}
+                </div>
 
                 {/* 通話状態インジケーター */}
                 {isConnected && (
@@ -437,7 +431,7 @@ export const ConsultantDetailPage: React.FC = () => {
 
               {/* メッセージ一覧 */}
               <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0">
-                {currentMessages.map((message) => (
+                {currentMessages.filter(message => message.content.trim()).map((message) => (
                   <div
                     key={message.id}
                     className={`flex items-start space-x-2 ${
@@ -465,14 +459,6 @@ export const ConsultantDetailPage: React.FC = () => {
                           <Volume2 size={12} />
                           <span>再生</span>
                         </button>
-                      )}
-                      {useWebRTC && (
-                        <div className="mt-1 text-xs opacity-70">
-                          <span className="flex items-center space-x-1">
-                            <Volume2 size={12} />
-                            <span>リアルタイム音声</span>
-                          </span>
-                        </div>
                       )}
                     </div>
                   </div>

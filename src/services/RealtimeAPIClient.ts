@@ -26,6 +26,10 @@ export class RealtimeAPIClient {
   private conversationPhase: 'questions' | 'hot-reading' | 'cold-reading' | 'subsidies' | 'summary' | 'recommendations' = 'questions';
   private messageHistory: Array<{ role: 'user' | 'assistant'; content: string; timestamp: number }> = [];
   
+  // 音声転写管理
+  private lastUserTranscript: string = '';
+  private lastAssistantTranscript: string = '';
+  
   // イベントハンドラー
   private eventHandlers: Map<string, Set<Function>> = new Map();
 
@@ -535,6 +539,14 @@ ${phaseInstructions}
         this.handleConversationItemCreated(event as any);
         break;
 
+      case 'conversation.item.input_audio_transcription.completed':
+        this.handleInputAudioTranscriptionCompleted(event as any);
+        break;
+
+      case 'conversation.item.input_audio_transcription.failed':
+        this.handleInputAudioTranscriptionFailed(event as any);
+        break;
+
       case 'response.created':
         this.handleResponseCreated(event as any);
         break;
@@ -565,6 +577,10 @@ ${phaseInstructions}
 
       case 'response.output_item.done':
         this.handleResponseOutputItemDone(event as any);
+        break;
+
+      case 'response.audio_transcript.done':
+        this.handleResponseAudioTranscriptDone(event as any);
         break;
 
       case 'response.done':
@@ -637,6 +653,58 @@ ${phaseInstructions}
   private handleAudioBufferCleared(event: any): void {
     this.emit('audiobuffercleared', {
       event_id: event.event_id
+    });
+  }
+
+  /**
+   * 音声転写完了処理
+   */
+  private handleInputAudioTranscriptionCompleted(event: any): void {
+    const transcript = event.transcript || '';
+    this.lastUserTranscript = transcript;
+    
+    console.log('🎤 User transcript:', transcript);
+    
+    // メッセージ履歴を更新
+    this.messageHistory.push({
+      role: 'user',
+      content: transcript,
+      timestamp: Date.now()
+    });
+
+    this.emit('usertranscript', {
+      transcript,
+      timestamp: Date.now()
+    });
+  }
+
+  /**
+   * 音声転写失敗処理
+   */
+  private handleInputAudioTranscriptionFailed(event: any): void {
+    console.warn('❌ User transcription failed:', event);
+    this.emit('usertranscriptfailed', event);
+  }
+
+  /**
+   * AI応答の音声転写完了処理
+   */
+  private handleResponseAudioTranscriptDone(event: any): void {
+    const transcript = event.transcript || '';
+    this.lastAssistantTranscript = transcript;
+    
+    console.log('🤖 Assistant transcript:', transcript);
+    
+    // メッセージ履歴を更新
+    this.messageHistory.push({
+      role: 'assistant',
+      content: transcript,
+      timestamp: Date.now()
+    });
+
+    this.emit('assistanttranscript', {
+      transcript,
+      timestamp: Date.now()
     });
   }
 
@@ -1033,6 +1101,20 @@ ${phaseInstructions}
    */
   private generateEventId(): string {
     return `evt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  }
+
+  /**
+   * 最新のユーザー音声転写を取得
+   */
+  getLastUserTranscript(): string {
+    return this.lastUserTranscript;
+  }
+
+  /**
+   * 最新のアシスタント音声転写を取得
+   */
+  getLastAssistantTranscript(): string {
+    return this.lastAssistantTranscript;
   }
 
   // イベントエミッター機能

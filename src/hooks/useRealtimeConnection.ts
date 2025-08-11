@@ -181,6 +181,21 @@ export const useRealtimeConnection = (): UseRealtimeConnectionReturn => {
       }));
     });
 
+    // 音声転写イベント
+    client.on('usertranscript', (data: any) => {
+      setState(prev => ({ 
+        ...prev, 
+        messageHistory: client.getMessageHistory()
+      }));
+    });
+
+    client.on('assistanttranscript', (data: any) => {
+      setState(prev => ({ 
+        ...prev, 
+        messageHistory: client.getMessageHistory()
+      }));
+    });
+
     // エラーハンドリング
     client.on('error', (errorData: any) => {
       setState(prev => ({ 

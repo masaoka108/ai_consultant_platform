@@ -4,7 +4,7 @@ export const consultants: Consultant[] = [
   {
     id: '1',
     name: '五味田 匡功',
-    avatar: '/public/IKariwUZ_400x400.jpg',
+    avatar: '/public/gomita_san_thumbnail.png',
     experience: '日本最大規模の社労士事務所社長やってます',
     specialties: ['IT・テクノロジー', '中小企業', 'スタートアップ'],
     expertise: 'IT業界での新規開拓営業、デジタル変革提案',

@@ -298,14 +298,14 @@ export const ConsultantDetailPage: React.FC = () => {
                 <div className="flex items-center justify-center space-x-4">
                   {isConversationStarted && (
                     <>
-                      <button
+                      {/* <button
                     onClick={() => setIsMuted(!isMuted)}
                     className={`p-3 rounded-full transition-colors ${
                       isMuted ? 'bg-red-500 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                     }`}
                       >
                     {isMuted ? <MicOff size={20} /> : <Mic size={20} />}
-                      </button>
+                      </button> */}
 
                       <button
                     onClick={handleVoiceInput}
@@ -319,7 +319,7 @@ export const ConsultantDetailPage: React.FC = () => {
                     <Mic size={24} />
                       </button>
 
-                      <button
+                      {/* <button
                     onClick={stopAudio}
                     disabled={!isSpeaking}
                     className={`p-3 rounded-full transition-colors ${
@@ -330,7 +330,7 @@ export const ConsultantDetailPage: React.FC = () => {
                     title="音声停止"
                       >
                     <Volume2 size={20} />
-                      </button>
+                      </button> */}
 
                       <button
                     onClick={() => setIsCallActive(!isCallActive)}

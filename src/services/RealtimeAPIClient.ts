@@ -17,6 +17,8 @@ export class RealtimeAPIClient {
   private webrtcManager: WebRTCManager;
   private audioProcessor: AudioStreamProcessor | null = null;
   private tokenManager: EphemeralTokenManager;
+  private autoMutedByAssistant: boolean = false;
+  private autoMuteTimeoutId: number | null = null;
   
   private currentSession: RealtimeSession | null = null;
   private consultantId: string | null = null;
@@ -63,16 +65,16 @@ export class RealtimeAPIClient {
     });
 
     // 音声関連イベント
-    this.webrtcManager.on('audioresponse', (event) => {
+    this.webrtcManager.on('audioresponse', (event: RealtimeEvent) => {
       this.emit('audioresponse', event);
     });
 
-    this.webrtcManager.on('textresponse', (event) => {
+    this.webrtcManager.on('textresponse', (event: RealtimeEvent) => {
       this.emit('textresponse', event);
     });
 
     // エラーイベント
-    this.webrtcManager.on('error', (error) => {
+    this.webrtcManager.on('error', (error: { type: string; message: string; [key: string]: any }) => {
       this.emit('error', error);
     });
   }
@@ -95,6 +97,13 @@ export class RealtimeAPIClient {
       console.log('Connecting WebRTC...');
       await this.webrtcManager.connect();
       console.log('WebRTC connected');
+
+      // 念のためマイクを有効化（前回の自動ミュートが残っていた場合の復旧）
+      try {
+        this.webrtcManager.setMuted(false);
+      } catch (_) {
+        // no-op
+      }
       
       // 音声処理を開始
       console.log('Setting up audio processing...');
@@ -144,21 +153,9 @@ export class RealtimeAPIClient {
       this.webrtcManager.startAudioLevelMonitoring();
 
       // VADイベントの処理
-      this.audioProcessor.on('vadstatechange', (vad) => {
+      this.audioProcessor.on('vadstatechange', (vad: { isActive: boolean; rmsLevel?: number; confidence?: number }) => {
         this.emit('voiceactivitychange', vad);
-        
-        // VADイベントをOpenAI APIに送信
-        if (vad.isActive) {
-          this.sendRealtimeEvent({
-            type: 'input_audio_buffer.speech_started',
-            event_id: this.generateEventId()
-          });
-        } else {
-          this.sendRealtimeEvent({
-            type: 'input_audio_buffer.speech_stopped',
-            event_id: this.generateEventId()
-          });
-        }
+        // サーバーVADを使用するため、手動のVADイベント送信は行わない（誤バージイン防止）
       });
 
     } catch (error) {
@@ -230,10 +227,11 @@ export class RealtimeAPIClient {
       throw new Error(`Consultant with ID ${consultantId} not found`);
     }
 
-    const phaseInstructions = this.getPhaseSpecificInstructions();
-    const personalityTraits = this.generatePersonalityTraits(consultant);
-    const expertiseDetails = this.generateExpertiseDetails(consultant);
-    const networkInformation = this.generateNetworkInformation(consultant);
+    // 生成関数呼び出しはコメントアウト（現行の長文テンプレートを使用）
+    // const phaseInstructions = this.getPhaseSpecificInstructions();
+    // const personalityTraits = this.generatePersonalityTraits(consultant);
+    // const expertiseDetails = this.generateExpertiseDetails(consultant);
+    // const networkInformation = this.generateNetworkInformation(consultant);
 
     const instruction = `
 あなたは「${consultant.name}」として振る舞います。
@@ -241,38 +239,21 @@ export class RealtimeAPIClient {
 「#基本方針」と「#コンサル手順」に従って、コンサルタントをすること。
 
 #基本方針
-- フェーズは 1→2→3→4 の順のみ。条件が満たされるまで絶対に進まない/戻らない。フェーズの途中で決して止まらないでください。
-- 1ターン=質問は1つ。ユーザー向け文（SAY）は日本語で100字以内・完結文。
-- フェーズ1-3では紹介・提案・具体名は一切禁止。求められても丁寧に保留して軌道修正。
+- 返信は日本語で100字以内・完結文。
+- 「手順」は止まることなく続行してください。1つの手順は1回の発言で必ず終了して次の手順に移行してください。
 - 信頼の二軸を同時に獲得：「人として信頼」＋「プロとして信頼」
 - 専門語には必ず平易補足を添える、売り込み禁止
 - 短く・具体・やさしく。相手の時間を節約する表現を最優先。押し売りしない。
 
 #コンサル手順
-
-## 1「ヒアリング」
-###進行1 ここではまず相手の情報を聞き出します。この段階ではまだ具体的な紹介はしないでください。
-####手順1: 業界、事業規模、従業員数を聞く
-####手順2: 既存の取引先さんはどんなところかを聞く
-####手順3: 目的確認と許可取りをとって次のフェーズへ進む。「今日は御社の課題整理をさせていただき、最適案の合意まで進めても良いですか？」
-
-## 2「ホットリーディング」
-###進行1 ここではヒアリング内容をもとに2ターン会話します。この段階ではまだ具体的な紹介はしないでください。
-####手順1: 課題の確認。「現状で課題だと考えているのはどこですか？」
-####手順2: 具体的な解決方法については深掘りしない。状況のヒアリングのみ。
-####手順3: 課題を明確化して次のフェーズへ進む
-
-## 3「コールドリーディング」
-###進行1 これまでの情報から、2ターン会話します。この段階ではまだ具体的な紹介はしないでください。
-####手順1: コールドリーディングの手法で課題から類推して誰にでも当てはまることを最もらしく発言
-####手順2: 具体的な解決方法については深掘りしない。状況のヒアリングのみ。
-####手順3: 再び課題を明確化して、次のフェーズへ進む
-
-## 4「紹介フェーズ」
-###進行1 これまでの情報を総合して、紹介可能人脈からマッチングする候補の概要を紹介します。
-####手順1: これまでの話をまとめて #紹介可能人脈 からマッチングする候補の概要を紹介
-####手順2: どんな人が良いかをヒアリング。専門領域や性格（キッチリ進める人がいい、スピードが速い人がいい、素直、勉強熱心、価格が安い、など）
-####手順3: ヒアリング内容を総合して #紹介可能人脈 からマッチング候補を紹介
+##手順1: 業界、事業規模、従業員数を聞く
+##手順2: 既存の取引先さんはどんなところかを聞く
+##手順3: 目的確認と許可取りをとって次のフェーズへ進む。「今日は御社の課題整理をさせていただき、最適案の合意まで進めても良いですか？」
+##手順4: 課題の確認。「現状で課題だと考えているのはどこですか？」
+##手順5: すでにやったアクションを確認。「その課題に対して、これまでにどのようなアクションを取ってきましたか？」
+##手順6: 相手の考えを聞く「何か解決すれば、その課題が解決すると思いますか？」
+##手順7: これまでの話をまとめて #紹介可能人脈 からマッチングする候補の概要を紹介
+##手順8: どんな人が良いかをヒアリング。専門領域や性格（キッチリ進める人がいい、スピードが速い人がいい、素直、勉強熱心、価格が安い、など）
 
 #紹介可能人脈
 ##コスト削減
@@ -337,7 +318,32 @@ export class RealtimeAPIClient {
 
 
     `
+   
     
+    // ####手順9: 
+    // ####手順10: 
+    
+    
+    // ## フェーズ2「ホットリーディング」
+    // ###進行1 ここではヒアリング内容をもとに2ターン会話します。この段階ではまだ具体的な紹介はしないでください。
+    // ####手順1: 課題の確認。「現状で課題だと考えているのはどこですか？」
+    // ####手順2: 具体的な解決方法については深掘りしない。状況のヒアリングのみ。
+    // ####手順3: 課題を明確化して次のフェーズへ進む
+    
+    // ## フェーズ3「コールドリーディング」
+    // ###進行1 これまでの情報から、2ターン会話します。この段階ではまだ具体的な紹介はしないでください。
+    // ####手順1: コールドリーディングの手法で課題から類推して誰にでも当てはまることを最もらしく発言
+    // ####手順2: 具体的な解決方法については深掘りしない。状況のヒアリングのみ。
+    // ####手順3: 再び課題を明確化して、次のフェーズへ進む
+    
+    // ## フェーズ4「紹介」
+    // ###進行1 これまでの情報を総合して、紹介可能人脈からマッチングする候補の概要を紹介します。
+    // ####手順1: これまでの話をまとめて #紹介可能人脈 からマッチングする候補の概要を紹介
+    // ####手順2: どんな人が良いかをヒアリング。専門領域や性格（キッチリ進める人がいい、スピードが速い人がいい、素直、勉強熱心、価格が安い、など）
+    // ####手順3: ヒアリング内容を総合して #紹介可能人脈 からマッチング候補を紹介
+    
+
+
 //     const instruction = `
 // # あなたのアイデンティティ
 // あなたは「${consultant.name}」として振る舞います。${consultant.experience}
@@ -617,7 +623,7 @@ export class RealtimeAPIClient {
       this.on('realtimeevent', handleSessionCreated);
       
       // WebRTC接続状態を定期的にチェック
-      const connectionCheck = setInterval(() => {
+    const connectionCheck = setInterval(() => {
         if (this.webrtcManager.isConnected()) {
           clearInterval(connectionCheck);
           handleWebRTCConnection();
@@ -625,7 +631,6 @@ export class RealtimeAPIClient {
       }, 1000);
 
       // タイムアウト時にintervalもクリア
-      const originalTimeout = timeout;
       setTimeout(() => {
         clearInterval(connectionCheck);
       }, timeoutMs);
@@ -950,6 +955,16 @@ export class RealtimeAPIClient {
    * 音声デルタの処理
    */
   private handleAudioDelta(event: any): void {
+    // アシスタントの音声出力が始まったタイミングで自動ミュート
+    if (!this.autoMutedByAssistant) {
+      const alreadyMuted = this.webrtcManager.isMuted();
+      if (!alreadyMuted) {
+        this.webrtcManager.setMuted(true);
+        this.autoMutedByAssistant = true;
+      }
+    }
+    // ウォッチドッグ: デルタが一定時間来なければ自動解除（ハング防止）
+    this.scheduleAutoUnmute(8000);
     this.emit('audiodelta', {
       response_id: event.response_id,
       item_id: event.item_id,
@@ -963,6 +978,12 @@ export class RealtimeAPIClient {
    * 音声完了の処理
    */
   private handleAudioDone(event: any): void {
+    // 音声出力が完了したら自動ミュートのみ解除
+    this.clearAutoUnmuteTimer();
+    if (this.autoMutedByAssistant) {
+      this.webrtcManager.setMuted(false);
+      this.autoMutedByAssistant = false;
+    }
     this.emit('audiodone', {
       response_id: event.response_id,
       item_id: event.item_id,
@@ -994,6 +1015,31 @@ export class RealtimeAPIClient {
 
     // 会話フェーズの自動進行を検討
     this.considerPhaseProgression(event.response);
+
+    // 念のため、レスポンス完了時にも自動ミュート解除（安全弁）
+    this.clearAutoUnmuteTimer();
+    if (this.autoMutedByAssistant) {
+      this.webrtcManager.setMuted(false);
+      this.autoMutedByAssistant = false;
+    }
+  }
+
+  private scheduleAutoUnmute(timeoutMs: number): void {
+    this.clearAutoUnmuteTimer();
+    this.autoMuteTimeoutId = window.setTimeout(() => {
+      if (this.autoMutedByAssistant) {
+        this.webrtcManager.setMuted(false);
+        this.autoMutedByAssistant = false;
+      }
+      this.autoMuteTimeoutId = null;
+    }, timeoutMs);
+  }
+
+  private clearAutoUnmuteTimer(): void {
+    if (this.autoMuteTimeoutId !== null) {
+      clearTimeout(this.autoMuteTimeoutId);
+      this.autoMuteTimeoutId = null;
+    }
   }
 
   /**
@@ -1198,10 +1244,10 @@ export class RealtimeAPIClient {
    * セッションの状態取得
    */
   getSessionStatus(): {
-    state: typeof this.sessionState;
+    state: 'disconnected' | 'connecting' | 'connected' | 'error';
     session: RealtimeSession | null;
     consultantId: string | null;
-    phase: typeof this.conversationPhase;
+    phase: 'questions' | 'hot-reading' | 'cold-reading' | 'subsidies' | 'summary' | 'recommendations';
     isConnected: boolean;
   } {
     return {

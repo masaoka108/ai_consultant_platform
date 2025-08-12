@@ -1,8 +1,6 @@
 import { 
-  WebRTCConfig, 
   WebRTCConnectionState, 
   WebRTCManagerOptions,
-  MediaStreamInfo,
   RealtimeEvent 
 } from '../types/webrtc';
 import { EphemeralTokenManager } from './EphemeralTokenManager';
@@ -16,7 +14,8 @@ export class WebRTCManager {
   private dataChannel: RTCDataChannel | null = null;
   private audioElement: HTMLAudioElement | null = null;
   private localStream: MediaStream | null = null;
-  private remoteStream: MediaStream | null = null;
+  // private remoteStream: MediaStream | null = null;
+  private autoMutedByPlayback: boolean = false;
   
   private tokenManager: EphemeralTokenManager;
   private options: WebRTCManagerOptions;
@@ -30,8 +29,8 @@ export class WebRTCManager {
     this.options = {
       tokenServiceUrl: options.tokenServiceUrl || '/session',
       realtimeApiUrl: options.realtimeApiUrl || 'https://api.openai.com/v1/realtime',
-      //model: options.model || 'gpt-4o-realtime-preview-2024-10-01',
-      model: options.model || 'gpt-4o-mini-realtime-preview-2024-12-17',
+      model: options.model || 'gpt-4o-realtime-preview-2024-10-01',
+      //model: options.model || 'gpt-4o-mini-realtime-preview-2024-12-17',
       audioSampleRate: options.audioSampleRate || 24000,
       enableFallback: options.enableFallback !== undefined ? options.enableFallback : true,
     };
@@ -147,7 +146,8 @@ export class WebRTCManager {
   private setupAudioElement(): void {
     this.audioElement = document.createElement('audio');
     this.audioElement.autoplay = true;
-    this.audioElement.playsInline = true;
+    // playsInline は型定義上 Audio に存在しないため属性で設定
+    this.audioElement.setAttribute('playsinline', 'true');
     
     // 音声再生の詳細イベントハンドリング
     this.setupAudioElementEvents();
@@ -165,6 +165,7 @@ export class WebRTCManager {
         duration: this.audioElement?.duration,
         volume: this.audioElement?.volume
       });
+      // MediaStream はライブで再生継続するため、ここでは自動ミュートしない
     };
 
     this.audioElement.onpause = () => {
@@ -173,6 +174,7 @@ export class WebRTCManager {
 
     this.audioElement.onended = () => {
       this.emit('audioended', {});
+      // MediaStream の onended は通常接続終了時のみ。ここでは何もしない
     };
 
     this.audioElement.onvolumechange = () => {
@@ -224,7 +226,7 @@ export class WebRTCManager {
    * リモート音声ストリームの処理
    */
   private handleRemoteAudioStream(stream: MediaStream, track: MediaStreamTrack): void {
-    this.remoteStream = stream;
+    // this.remoteStream = stream; // 未使用のため保持しない
     
     // Audio要素に接続
     if (this.audioElement) {
@@ -426,8 +428,7 @@ export class WebRTCManager {
         noiseSuppression: true,
         autoGainControl: true,
         // 追加の品質設定
-        sampleSize: { ideal: 16 },
-        latency: { ideal: 0.01 }, // 10ms の低遅延
+        sampleSize: { ideal: 16 }
       },
       video: false
     };

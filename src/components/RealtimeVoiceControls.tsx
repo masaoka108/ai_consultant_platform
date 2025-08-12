@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
   Mic, 
   MicOff, 
@@ -7,7 +7,6 @@ import {
   Volume2, 
   VolumeX,
   Settings,
-  Activity,
   Wifi,
   WifiOff,
   AlertCircle
@@ -54,7 +53,7 @@ export const RealtimeVoiceControls: React.FC<RealtimeVoiceControlsProps> = ({
   isRemoteMuted,
   audioLevel,
   isVoiceActive,
-  conversationPhase,
+  conversationPhase: _conversationPhase,
   error,
   isFallbackMode,
   onStartCall,
@@ -88,18 +87,7 @@ export const RealtimeVoiceControls: React.FC<RealtimeVoiceControlsProps> = ({
     }
   };
 
-  // 会話フェーズの日本語表示
-  const getPhaseDisplayName = (phase: string) => {
-    switch (phase) {
-      case 'questions': return '質問・ヒアリング';
-      case 'hot-reading': return 'ホットリーディング';
-      case 'cold-reading': return 'コールドリーディング';
-      case 'subsidies': return '補助金・支援制度';
-      case 'summary': return 'まとめ';
-      case 'recommendations': return '推奨事項';
-      default: return phase;
-    }
-  };
+  // 会話フェーズ表示は現在未使用（必要時に再有効化）
 
   // 音声レベルのビジュアライザー
   const VoiceLevelIndicator = () => (
@@ -190,9 +178,9 @@ export const RealtimeVoiceControls: React.FC<RealtimeVoiceControlsProps> = ({
         )}
       </div>
 
-      {/* 音声コントロール */}
-      {/* {isConnected && (
-        <div className="grid grid-cols-2 gap-4">
+      {/* 音声コントロール（接続後に表示） */}
+      {isConnected && (
+        <div className="grid grid-cols-1 gap-4">
           <div className="space-y-2">
             <button
               onClick={onToggleMute}
@@ -205,43 +193,45 @@ export const RealtimeVoiceControls: React.FC<RealtimeVoiceControlsProps> = ({
               {isMuted ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
               <span>{isMuted ? 'ミュート中' : 'マイク'}</span>
             </button>
-            
+
             <div className="flex items-center space-x-2">
               <span className="text-xs text-gray-600">入力:</span>
               <VoiceLevelIndicator />
             </div>
           </div>
 
-          <div className="space-y-2">
-            <button
-              onClick={onToggleRemoteMute}
-              className={`w-full flex items-center justify-center space-x-2 px-4 py-3 rounded-lg font-medium transition-colors ${
-                isRemoteMuted
-                  ? 'bg-red-100 text-red-700 hover:bg-red-200'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              {isRemoteMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
-              <span>{isRemoteMuted ? '音声OFF' : 'スピーカー'}</span>
-            </button>
-
-            <div className="space-y-1">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-gray-600">音量:</span>
-                <span className="text-xs text-gray-600">{volume}%</span>
+          {/* リモート音声／音量は必要になったら再度有効化 */}
+          {false && (
+            <div className="space-y-2">
+              <button
+                onClick={onToggleRemoteMute}
+                className={`w-full flex items-center justify-center space-x-2 px-4 py-3 rounded-lg font-medium transition-colors ${
+                  isRemoteMuted
+                    ? 'bg-red-100 text-red-700 hover:bg-red-200'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                {isRemoteMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+                <span>{isRemoteMuted ? '音声OFF' : 'スピーカー'}</span>
+              </button>
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-gray-600">音量:</span>
+                  <span className="text-xs text-gray-600">{volume}%</span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={volume}
+                  onChange={(e) => handleVolumeChange(Number(e.target.value))}
+                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
+                />
               </div>
-              <input
-                type="range"
-                min="0"
-                max="100"
-                value={volume}
-                onChange={(e) => handleVolumeChange(Number(e.target.value))}
-                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
-              />
             </div>
-          </div>
+          )}
         </div>
-      )} */}
+      )}
 
       {/* エラー表示 */}
       {error && (
@@ -320,7 +310,7 @@ export const RealtimeVoiceControls: React.FC<RealtimeVoiceControlsProps> = ({
       )}
 
       {/* CSS for slider styling */}
-      <style jsx>{`
+      <style>{`
         .slider::-webkit-slider-thumb {
           appearance: none;
           width: 16px;

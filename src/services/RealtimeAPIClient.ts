@@ -73,6 +73,23 @@ export class RealtimeAPIClient {
       this.emit('textresponse', event);
     });
 
+    // 入力音声可視化/ミュート状態のリレー
+    this.webrtcManager.on('audiolevel', (data: any) => {
+      this.emit('audiolevel', data);
+    });
+
+    this.webrtcManager.on('mutedstatechanged', (data: any) => {
+      this.emit('mutedstatechanged', data);
+    });
+
+    // リモート側（必要に応じてUIへ）
+    this.webrtcManager.on('remoteaudiomutedchanged', (data: any) => {
+      this.emit('remoteaudiomutedchanged', data);
+    });
+    this.webrtcManager.on('remoteaudiovolumechanged', (data: any) => {
+      this.emit('remoteaudiovolumechanged', data);
+    });
+
     // エラーイベント
     this.webrtcManager.on('error', (error: { type: string; message: string; [key: string]: any }) => {
       this.emit('error', error);

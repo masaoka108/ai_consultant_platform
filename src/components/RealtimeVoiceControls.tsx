@@ -157,7 +157,7 @@ export const RealtimeVoiceControls: React.FC<RealtimeVoiceControlsProps> = ({
       </div>
 
       {/* 会話フェーズ表示 */}
-      {isConnected && (
+      {/* {isConnected && (
         <div className="bg-blue-50 p-3 rounded-lg">
           <div className="flex items-center space-x-2">
             <Activity className="w-4 h-4 text-blue-600" />
@@ -166,7 +166,7 @@ export const RealtimeVoiceControls: React.FC<RealtimeVoiceControlsProps> = ({
             </span>
           </div>
         </div>
-      )}
+      )} */}
 
       {/* メイン操作ボタン */}
       <div className="flex items-center justify-center space-x-4">
@@ -191,9 +191,8 @@ export const RealtimeVoiceControls: React.FC<RealtimeVoiceControlsProps> = ({
       </div>
 
       {/* 音声コントロール */}
-      {isConnected && (
+      {/* {isConnected && (
         <div className="grid grid-cols-2 gap-4">
-          {/* マイクコントロール */}
           <div className="space-y-2">
             <button
               onClick={onToggleMute}
@@ -207,14 +206,12 @@ export const RealtimeVoiceControls: React.FC<RealtimeVoiceControlsProps> = ({
               <span>{isMuted ? 'ミュート中' : 'マイク'}</span>
             </button>
             
-            {/* 音声レベル表示 */}
             <div className="flex items-center space-x-2">
               <span className="text-xs text-gray-600">入力:</span>
               <VoiceLevelIndicator />
             </div>
           </div>
 
-          {/* スピーカーコントロール */}
           <div className="space-y-2">
             <button
               onClick={onToggleRemoteMute}
@@ -228,7 +225,6 @@ export const RealtimeVoiceControls: React.FC<RealtimeVoiceControlsProps> = ({
               <span>{isRemoteMuted ? '音声OFF' : 'スピーカー'}</span>
             </button>
 
-            {/* 音量調整 */}
             <div className="space-y-1">
               <div className="flex items-center justify-between">
                 <span className="text-xs text-gray-600">音量:</span>
@@ -245,7 +241,7 @@ export const RealtimeVoiceControls: React.FC<RealtimeVoiceControlsProps> = ({
             </div>
           </div>
         </div>
-      )}
+      )} */}
 
       {/* エラー表示 */}
       {error && (

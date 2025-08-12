@@ -30,7 +30,7 @@ export class WebRTCManager {
     this.options = {
       tokenServiceUrl: options.tokenServiceUrl || '/session',
       realtimeApiUrl: options.realtimeApiUrl || 'https://api.openai.com/v1/realtime',
-      // model: options.model || 'gpt-4o-realtime-preview-2024-10-01',
+      //model: options.model || 'gpt-4o-realtime-preview-2024-10-01',
       model: options.model || 'gpt-4o-mini-realtime-preview-2024-12-17',
       audioSampleRate: options.audioSampleRate || 24000,
       enableFallback: options.enableFallback !== undefined ? options.enableFallback : true,

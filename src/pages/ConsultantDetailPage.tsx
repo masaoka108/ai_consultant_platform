@@ -60,10 +60,18 @@ export const ConsultantDetailPage: React.FC = () => {
 
   // WebRTC接続開始
   const handleStartWebRTCCall = async () => {
-    if (!id) return;
+    console.log('=== handleStartWebRTCCall called ===');
+    console.log('Consultant ID from params:', id);
+    
+    if (!id) {
+      console.log('❌ No consultant ID found');
+      return;
+    }
     
     try {
+      console.log('🔄 About to call actions.connect with ID:', id);
       await actions.connect(id);
+      console.log('✅ actions.connect completed successfully');
     } catch (error) {
       console.error('WebRTC接続エラー:', error);
       // エラー時はフォールバックモードに切り替え

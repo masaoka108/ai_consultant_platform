@@ -237,17 +237,32 @@ export const useRealtimeConnection = (): UseRealtimeConnectionReturn => {
 
   // 接続
   const connect = useCallback(async (consultantId: string) => {
+    console.log('=== useRealtimeConnection connect called ===');
+    console.log('Consultant ID:', consultantId);
+    
     try {
+      // 既存接続がある場合は強制的に切断
+      if (clientRef.current) {
+        console.log('🔄 Existing connection detected - forcing disconnect');
+        await clientRef.current.endSession();
+        clientRef.current = null;
+        console.log('✅ Existing connection terminated');
+      }
+      
+      console.log('Initializing client...');
       const client = initializeClient();
       lastConsultantIdRef.current = consultantId;
       
+      console.log('Setting connection state to connecting...');
       setState(prev => ({ 
         ...prev, 
         connectionState: 'connecting',
         error: null 
       }));
       
+      console.log('About to call client.initializeSession...');
       await client.initializeSession(consultantId);
+      console.log('client.initializeSession completed');
     } catch (error) {
       setState(prev => ({ 
         ...prev,

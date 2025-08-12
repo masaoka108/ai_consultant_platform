@@ -81,20 +81,30 @@ export class RealtimeAPIClient {
    * セッションの初期化と接続確立
    */
   async initializeSession(consultantId: string): Promise<RealtimeSession> {
+    console.log('=== Initialize Session Called ===');
+    console.log('Consultant ID:', consultantId);
+    
     try {
       this.sessionState = 'connecting';
       this.consultantId = consultantId;
       
+      console.log('Emitting session initializing event...');
       this.emit('sessioninitializing', { consultantId });
 
       // WebRTC接続を確立
+      console.log('Connecting WebRTC...');
       await this.webrtcManager.connect();
+      console.log('WebRTC connected');
       
       // 音声処理を開始
+      console.log('Setting up audio processing...');
       await this.setupAudioProcessing();
+      console.log('Audio processing setup completed');
       
       // セッション設定を送信
+      console.log('Configuring session...');
       await this.configureSession(consultantId);
+      console.log('Session configuration completed');
       
       this.sessionState = 'connected';
       this.emit('sessioninitialized', { 
@@ -160,6 +170,10 @@ export class RealtimeAPIClient {
    * セッション設定の送信
    */
   private async configureSession(consultantId: string): Promise<void> {
+    console.log('=== Configure Session Started ===');
+    console.log('Consultant ID:', consultantId);
+    
+    console.log('Building session configuration...');
     const sessionConfig: SessionUpdateEvent = {
       type: 'session.update',
       event_id: this.generateEventId(),
@@ -185,10 +199,25 @@ export class RealtimeAPIClient {
       }
     };
 
+    console.log('Sending session configuration...');
     this.sendRealtimeEvent(sessionConfig);
     
     // 初期化完了まで待機
+    console.log('Waiting for session creation...');
     await this.waitForSessionCreated();
+    console.log('Session creation completed');
+    
+    // 既存接続の場合でも必ずプロンプト更新を実行
+    console.log('=== Force updating consultant instructions ===');
+    if (this.webrtcManager.isConnected()) {
+      console.log('Existing connection detected - forcing prompt update');
+      await this.updateSessionInstructions();
+    } else {
+      console.log('New connection - updating instructions');
+      await this.updateSessionInstructions();
+    }
+    console.log('=== Consultant instructions initialized ===');
+    console.log('=== Configure Session Completed ===');
   }
 
   /**
@@ -213,31 +242,90 @@ export class RealtimeAPIClient {
 ## パーソナリティ
 ${personalityTraits}
 
-## 専門性と経験
-${expertiseDetails}
 
-## ネットワークと人脈
-${networkInformation}
+目的は、提携営業の定型スクリプトと運用フレームを忠実に再現し、
+①セールス（紹介営業＋コンサル営業）→②リファーラル→③アレンジメント→④コミュニティ運営フォロー
+の4段階を対話で実行して商談・紹介・案件化を最大化すること。
 
-## 現在の会話フェーズ: ${this.conversationPhase}
-${phaseInstructions}
+【原則（必ず遵守）】
+- 100文字程度で返信する。長いのはNG。
+- 4分類の定義に基づいて動く（セールス／リファーラル／アレンジメント／コミュニティリーダー）。※無理に自社PRしない、紹介と設計で将来の見込顧客を増やす。  
+- 信頼の二軸を同時に獲得：「人として信頼」＋「プロとして信頼」。
+- 紹介の法則：自分から強くお願いすると“下流”、相手から頼まれる状態にすると“上流”。押さずに“後味を残す言い回し”で促す。
+- NG：できない約束／即時に紹介名を強要／応酬話法の押し付け／責任回避。
+- 紹介は「責任あり」スタンスで。期待値を先に調整し、必要な範囲でフォローする。
 
-## 音声会話での振る舞い
-- 自然で親しみやすい口調で話す
-- 適度な間を取り、相手の発言を最後まで聞く
-- 専門用語を使う際は、分かりやすい説明を加える
-- 具体例や事例を交えて説明する
-- クライアントの状況に応じて柔軟にアドバイスを調整する
+【会話スタイル（必ずこの順序で実施）】
+1) 目的確認と許可取り：「今日は御社の課題整理→最適案の合意まで進めても良いですか？」
+2) 自己紹介（1分版・“コンサート型”）：  
+- クライアントの業界、事業規模、現在の課題を順番に聞き取る
+- 能力/専門性（要実績1行）  
+   - 社会性/価値観（範囲×時間軸×コミットを一言で）  
+   - 人脈/影響力（相手が分かる先・領域のみ）
+3) ラポール形成：相手の発話を3～4文ごとに短く復唱・要約（バックトラック）。語彙やテンポは相手の約1/3だけ合わせる（過度な同調はしない）。
+4) コンサルティング営業：ロジックツリーをその場で共作し、  
+   - チャンクアップ（目的・意義）→チャンクラテラル（他の選択肢）→チャンクダウン（具体化）  
+   - 合意事項は逐次“文で”確認（「本日時点の合意は①②でよろしいですか？」）。  
+   - いきなり完全成功を前提にしない。小さく試し、PDCA前提で“相互自責”の関係を明言。
+5) 打ち手の提案：  
+   - 自社が最適：価格レンジ／導入フロー／期待値（成功・未達時の次手）まで明確化。  
+   - 他社が最適：リファーラル候補2～3件を“比較軸つき”で提示。紹介文案・三者セットアップ案まで出す。
+6) 次アクションの合意：担当・期限・成功判定指標。
+7) “後味を残す”一言を添える（例：「もし弊社でお役立ちできる先がいれば、責任持って全力対応します」）。
+8) 面談後は営業ログ(JSON)を必ず出力（仕様は下記ルール）。
 
-## 重要な注意点
-- 常に実用的で行動につながるアドバイスを心がける
-- 自分の専門外の分野については素直に認める
-- クライアントの業界や状況を深く理解しようとする姿勢を示す
-- 必要に応じて、適切な専門家や人脈を紹介する提案をする
+【出力ルール（毎回答）】
+- A. 相手に送る本文（敬体、300〜600字、専門語には必ず平易補足を添える、売り込み禁止）
+- B. 営業ログ(JSON; 構造は下の仕様に厳密準拠)
 
-あなたの豊富な経験と人脈を活かして、クライアントの課題解決に貢献してください。
-`;
+【リファーラル運用ルール】
+- 期待値調整→紹介文案→初回30–45分の三者MTGアジェンダ→議事メモ雛形までAIが提示。
+- 紹介元へ「こういう人を紹介いただきたい」人物像も明示（例：素直／プラス発想／勉強好き）。
+- 出資相談は原則“まず金融機関での融資検討→必要なら企画書レビュー→適切な紹介”の順。
 
+
+【トーン】
+- 短く・具体・やさしく。相手の時間を節約する表現を最優先。押し売りしない。
+
+    `
+    
+//     const instruction = `
+// # あなたのアイデンティティ
+// あなたは「${consultant.name}」として振る舞います。${consultant.experience}
+
+// ## パーソナリティ
+// ${personalityTraits}
+
+// ## 専門性と経験
+// ${expertiseDetails}
+
+// ## ネットワークと人脈
+// ${networkInformation}
+
+// ## 現在の会話フェーズ: ${this.conversationPhase}
+// ${phaseInstructions}
+
+// ## 音声会話での振る舞い
+// - 自然で親しみやすい口調で話す
+// - 適度な間を取り、相手の発言を最後まで聞く
+// - 専門用語を使う際は、分かりやすい説明を加える
+// - 具体例や事例を交えて説明する
+// - クライアントの状況に応じて柔軟にアドバイスを調整する
+
+// ## 重要な注意点
+// - 常に実用的で行動につながるアドバイスを心がける
+// - 自分の専門外の分野については素直に認める
+// - クライアントの業界や状況を深く理解しようとする姿勢を示す
+// - 必要に応じて、適切な専門家や人脈を紹介する提案をする
+
+// あなたの豊富な経験と人脈を活かして、クライアントの課題解決に貢献してください。
+// `;
+
+    console.log('=== Built Consultant Instructions ===');
+    console.log('Instructions length:', instruction.length);
+    console.log('Instructions preview:', instruction.substring(0, 200) + '...');
+    console.log('=====================================');
+    
     return instruction;
   }
 
@@ -263,7 +351,7 @@ ${phaseInstructions}
       case 'questions':
         return `
 ### 質問フェーズの進め方
-- クライアントの業界、事業規模、現在の課題を詳しく聞き取る
+- クライアントの業界、事業規模、現在の課題を順番に聞き取る
 - 「どのような業界でご活動されていますか？」「現在、どのような課題をお持ちですか？」など、オープンクエスチョンを活用
 - クライアントの回答に基づいて、さらに深掘りする質問を投げかける
 - このフェーズでは、情報収集に集中し、早急な解決策提示は控える`;
@@ -499,6 +587,13 @@ ${phaseInstructions}
    * Realtimeイベントの送信
    */
   sendRealtimeEvent(event: RealtimeEvent): void {
+    if (event.type === 'session.update' && 'session' in event && event.session?.instructions) {
+      console.log('=== Sending Session Update with Instructions ===');
+      console.log('Event type:', event.type);
+      console.log('Instructions preview:', event.session.instructions.substring(0, 300) + '...');
+      console.log('===============================================');
+    }
+    
     this.webrtcManager.sendRealtimeEvent(event);
     this.emit('eventsent', event);
   }
@@ -1008,6 +1103,11 @@ ${phaseInstructions}
 
     const updatedInstructions = await this.buildConsultantInstructions(this.consultantId);
     
+    console.log('=== Updating Session Instructions ===');
+    console.log('Consultant ID:', this.consultantId);
+    console.log('Instructions preview:', updatedInstructions.substring(0, 200) + '...');
+    console.log('=====================================');
+    
     const updateEvent: SessionUpdateEvent = {
       type: 'session.update',
       event_id: this.generateEventId(),
@@ -1017,6 +1117,7 @@ ${phaseInstructions}
     };
 
     this.sendRealtimeEvent(updateEvent);
+    console.log('Session update event sent');
   }
 
   /**
@@ -1027,8 +1128,7 @@ ${phaseInstructions}
       type: 'response.create',
       event_id: this.generateEventId(),
       response: {
-        modalities,
-        instructions: `現在のフェーズ: ${this.conversationPhase}。適切に応答してください。`
+        modalities
       }
     };
 

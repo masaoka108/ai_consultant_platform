@@ -7,6 +7,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'node:path';
+import fs from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -46,8 +47,8 @@ app.get('/session', async (req, res) => {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'gpt-4o-realtime-preview-2024-10-01',
-        //model: 'gpt-4o-mini-realtime-preview-2024-12-17',
+        //model: 'gpt-4o-realtime-preview-2024-10-01',
+        model: 'gpt-4o-mini-realtime-preview-2024-12-17',
         voice: 'alloy'
       })
     });
@@ -81,6 +82,21 @@ app.get('/session', async (req, res) => {
       error: 'Internal server error',
       message: error.message
     });
+  }
+});
+
+/**
+ * 紹介データ（ローカルJSON）提供エンドポイント
+ */
+app.get('/api/introductions', async (req, res) => {
+  try {
+    const filePath = path.join(__dirname, '..', 'data', 'introductions_network.json');
+    const json = await fs.readFile(filePath, 'utf-8');
+    const data = JSON.parse(json);
+    res.json(data);
+  } catch (error) {
+    console.error('Failed to read introductions JSON:', error);
+    res.status(500).json({ error: 'Failed to load introductions data' });
   }
 });
 

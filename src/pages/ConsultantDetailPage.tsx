@@ -52,7 +52,8 @@ export const ConsultantDetailPage: React.FC = () => {
     return realtimeHistory.map((msg, index) => ({
       id: `realtime-${index}`,
       type: msg.role === 'user' ? 'user' : 'consultant',
-      content: msg.content,
+      // 念のためUI側でも <RECO>…</RECO> を除去
+      content: String(msg.content).replace(/<RECO>[\s\S]*?<\/RECO>/g, '').trim(),
       timestamp: new Date(msg.timestamp),
       isAudio: msg.role === 'assistant'
     }));
@@ -497,13 +498,38 @@ export const ConsultantDetailPage: React.FC = () => {
           </div>
         </div>
 
-        {/* 人材紹介カード */}
-        {currentPhase === 'recommendations' && (
+        {/* 紹介候補（Realtimeからの推薦） */}
+        {(state.recommendedIntroductions && state.recommendedIntroductions.length > 0) && (
           <div className="mt-8 space-y-4">
-            <h2 className="text-xl font-bold text-gray-900">おすすめ人材</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {mockTalents.slice(0, 3).map((talent) => (
-                <TalentCard key={talent.id} talent={talent} />
+            <h2 className="text-xl font-bold text-gray-900">紹介候補</h2>
+            <div className="grid grid-cols-1 gap-4">
+              {state.recommendedIntroductions.map((rec: any, idx: number) => (
+                <div key={idx} className="bg-white rounded-lg shadow p-4">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <div className="text-sm text-gray-500">{rec.category} / {rec.subcategory}</div>
+                      <div className="text-lg font-semibold text-gray-900 mt-1">{rec.company?.name}</div>
+                      {rec.company?.alias && (
+                        <div className="text-xs text-gray-500">別表記: {rec.company.alias}</div>
+                      )}
+                      <div className="text-sm text-gray-700 mt-2">{rec.pitch}</div>
+                      {Array.isArray(rec.contacts) && rec.contacts.length > 0 && (
+                        <div className="mt-2 text-sm text-gray-600">
+                          担当: {rec.contacts.map((c: any) => `${c.role}: ${c.name}`).join(' / ')}
+                        </div>
+                      )}
+                      {Array.isArray(rec.links) && rec.links.length > 0 && (
+                        <div className="mt-2 text-sm">
+                          {rec.links.map((l: any, i: number) => (
+                            <a key={i} href={l.url || '#'} target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline mr-3">
+                              {l.label}
+                            </a>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
               ))}
             </div>
           </div>

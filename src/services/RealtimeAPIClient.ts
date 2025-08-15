@@ -261,6 +261,7 @@ export class RealtimeAPIClient {
 - 信頼の二軸を同時に獲得：「人として信頼」＋「プロとして信頼」
 - 専門語には必ず平易補足を添える、売り込み禁止
 - 短く・具体・やさしく。相手の時間を節約する表現を最優先。押し売りしない。
+- 相手が「相談は終わり」「相談は終了」などと言ったら、それまでの情報を元に最適な人材を紹介してください
 
 #コンサル手順
 ##手順1: 業界、事業規模、従業員数を聞く
@@ -271,6 +272,12 @@ export class RealtimeAPIClient {
 ##手順6: 相手の考えを聞く「何か解決すれば、その課題が解決すると思いますか？」
 ##手順7: これまでの話をまとめて #紹介可能人脈 からマッチングする候補の概要を紹介
 ##手順8: どんな人が良いかをヒアリング。専門領域や性格（キッチリ進める人がいい、スピードが速い人がいい、素直、勉強熱心、価格が安い、など）
+
+#出力フォーマット
+- 紹介を行う発話の最後に、必ず1回だけ <RECO>{"ids":[...]}</RECO> を付与すること。
+- このタグは音声に含めない（読み上げない）。話し言葉本文にも含めないこと。
+- 「RECO」「タグ」「JSON」「角括弧」などタグを想起させる語は決して発話しない。
+- ids には #紹介可能人脈 に記載の会社名を、本文と同一表記で配列として含めること（例: "株式会社Wiz"）。
 
 #紹介可能人脈
 ##コスト削減
@@ -856,7 +863,18 @@ export class RealtimeAPIClient {
    * AI応答の音声転写完了処理
    */
   private handleResponseAudioTranscriptDone(event: any): void {
-    const transcript = event.transcript || '';
+    let transcript = event.transcript || '';
+    // ここでも <RECO>…</RECO> を抽出してイベント化・表示用からは除去
+    const match = transcript.match(/<RECO>(.*?)<\/RECO>/);
+    if (match) {
+      try {
+        const payload = JSON.parse(match[1]);
+        if (payload && Array.isArray(payload.ids)) {
+          this.emit('recommendationssuggested', { ids: payload.ids });
+        }
+      } catch {}
+      transcript = transcript.replace(match[0], '').trim();
+    }
     this.lastAssistantTranscript = transcript;
     
     console.log('🤖 Assistant transcript:', transcript);
@@ -959,12 +977,23 @@ export class RealtimeAPIClient {
    * テキスト完了の処理
    */
   private handleTextDone(event: any): void {
+    let text = event.text || '';
+    const match = text.match(/<RECO>(.*?)<\/RECO>/);
+    if (match) {
+      try {
+        const payload = JSON.parse(match[1]);
+        if (payload && Array.isArray(payload.ids)) {
+          this.emit('recommendationssuggested', { ids: payload.ids });
+        }
+      } catch {}
+      text = text.replace(match[0], '').trim();
+    }
     this.emit('textdone', {
       response_id: event.response_id,
       item_id: event.item_id,
       output_index: event.output_index,
       content_index: event.content_index,
-      text: event.text
+      text
     });
   }
 
@@ -1099,7 +1128,9 @@ export class RealtimeAPIClient {
       if (item.content) {
         item.content.forEach((contentPart: any) => {
           if (contentPart.type === 'text') {
-            content += contentPart.text;
+            // 表示用テキストからは <RECO>…</RECO> を除去
+            const cleaned = String(contentPart.text).replace(/<RECO>[\s\S]*?<\/RECO>/g, '').trim();
+            content += cleaned;
           } else if (contentPart.type === 'audio') {
             content += '[音声コンテンツ]';
           }

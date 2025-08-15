@@ -1,0 +1,247 @@
+{
+  "version": "1.0",
+  "generated_at": "2025-08-13T04:05:40.229597",
+  "source": "ユーザー提供テキスト #紹介可能人脈",
+  "records": [
+    {
+      "category": "コスト削減",
+      "subcategory": "法人携帯",
+      "company": {
+        "name": "株式会社Wiz"
+      },
+      "contacts": [
+        {
+          "role": "代表",
+          "name": "山崎 俊"
+        },
+        {
+          "role": "担当者",
+          "name": "佐賀 準平"
+        }
+      ],
+      "links": [
+        {
+          "label": "公式ページ",
+          "url": null
+        }
+      ],
+      "pitch": "企業の成長を支援するDXツール導入サービス。売上向上やコスト削減、業務効率化を実現する最適なソリューションを提案。"
+    },
+    {
+      "category": "コスト削減",
+      "subcategory": "電気代削減",
+      "company": {
+        "name": "株式会社アライズ"
+      },
+      "contacts": [
+        {
+          "role": "代表/担当者",
+          "name": "中田 治"
+        }
+      ],
+      "links": [
+        {
+          "label": "Facebookメッセージ",
+          "url": null
+        }
+      ],
+      "pitch": "全国トップレベルのお得な電気代を提供。供給品質は維持しつつ、利用状況に応じた最適料金プランを提案。"
+    },
+    {
+      "category": "コスト削減",
+      "subcategory": "社会保険料削減（はぐくみ企業年金）",
+      "company": {
+        "name": "株式会社ベター・プレイス"
+      },
+      "contacts": [
+        {
+          "role": "代表/担当者",
+          "name": "森本 新兒"
+        }
+      ],
+      "links": [
+        {
+          "label": "詳細ページ",
+          "url": null
+        }
+      ],
+      "pitch": "中小企業中心に導入3000社以上。経営者も加入可能な「お金の福利厚生」。社会保険料削減と福利厚生強化を同時に実現。"
+    },
+    {
+      "category": "その他削減コンテンツ",
+      "subcategory": "総合FP資産形成・コンサルティング株式会社",
+      "company": {
+        "name": "総合FP資産形成・コンサルティング株式会社"
+      },
+      "contacts": [
+        {
+          "role": "代表",
+          "name": "上實 貴一"
+        },
+        {
+          "role": "担当",
+          "name": "神田 新"
+        }
+      ],
+      "links": [
+        {
+          "label": "紹介資料",
+          "url": null
+        }
+      ],
+      "pitch": "元国税調査官推奨の節税繰延スキーム。タイミング調整可能でキャッシュフロー改善。"
+    },
+    {
+      "category": "その他削減コンテンツ",
+      "subcategory": "株式会社日本企業型確定拠出年金センター",
+      "company": {
+        "name": "株式会社日本企業型確定拠出年金センター"
+      },
+      "contacts": [
+        {
+          "role": "代表/担当",
+          "name": "久野 勝也"
+        }
+      ],
+      "links": [
+        {
+          "label": "紹介資料",
+          "url": null
+        }
+      ],
+      "pitch": "役員退職金準備・社会保険削減・従業員満足向上を実現する制度。"
+    },
+    {
+      "category": "その他削減コンテンツ",
+      "subcategory": "ノービス・コンサルタンツ・インターナショナル株式会社",
+      "company": {
+        "name": "ノービス・コンサルタンツ・インターナショナル株式会社"
+      },
+      "contacts": [
+        {
+          "role": "代表/担当",
+          "name": "櫻井 博"
+        }
+      ],
+      "links": [
+        {
+          "label": "紹介資料",
+          "url": null
+        }
+      ],
+      "pitch": "導入資金を償却に充てられるスキーム設計が得意。"
+    },
+    {
+      "category": "その他カテゴリ",
+      "subcategory": "集客マーケティング",
+      "company": {
+        "name": "SANGO株式会社"
+      },
+      "contacts": [],
+      "links": [],
+      "pitch": "営業代行国内No.1実績。代理店・FC開拓プラットフォーム「カケハシ」運営。"
+    },
+    {
+      "category": "その他カテゴリ",
+      "subcategory": "集客マーケティング",
+      "company": {
+        "name": "Acroforce株式会社"
+      },
+      "contacts": [],
+      "links": [],
+      "pitch": "経営者特化型X運用「プロネス」。上場〜スタートアップまで支援実績多数。"
+    },
+    {
+      "category": "その他カテゴリ",
+      "subcategory": "集客マーケティング",
+      "company": {
+        "name": "BOTANICO"
+      },
+      "contacts": [],
+      "links": [],
+      "pitch": "Webマーケ×制作。定額でマーケ施策依頼し放題の「ASHINAMI」。"
+    },
+    {
+      "category": "その他カテゴリ",
+      "subcategory": "健康経営サポート",
+      "company": {
+        "name": "株式会社MYPLATE"
+      },
+      "contacts": [],
+      "links": [],
+      "pitch": "健康経営優良法人認定取得支援＋健康食提供。"
+    },
+    {
+      "category": "その他カテゴリ",
+      "subcategory": "健康経営サポート",
+      "company": {
+        "name": "株式会社国産の生活"
+      },
+      "contacts": [],
+      "links": [],
+      "pitch": "農家直送国産健康弁当（初期費用・月額無料）。"
+    },
+    {
+      "category": "その他カテゴリ",
+      "subcategory": "研修",
+      "company": {
+        "name": "アイ・クリエイティブ"
+      },
+      "contacts": [],
+      "links": [],
+      "pitch": "講師400名・助成金活用可。"
+    },
+    {
+      "category": "その他カテゴリ",
+      "subcategory": "研修",
+      "company": {
+        "name": "眼から鱗合同会社"
+      },
+      "contacts": [],
+      "links": [],
+      "pitch": "幹部研修＋メンタリング、AI時代対応型リーダー育成。"
+    },
+    {
+      "category": "その他カテゴリ",
+      "subcategory": "人材・HR",
+      "company": {
+        "name": "株式会社ユワナビ"
+      },
+      "contacts": [],
+      "links": [],
+      "pitch": "採用代行＋人材紹介「らくらくらく採用」。"
+    },
+    {
+      "category": "その他カテゴリ",
+      "subcategory": "人材・HR",
+      "company": {
+        "name": "株式会社エーライド"
+      },
+      "contacts": [],
+      "links": [],
+      "pitch": "エリア・業界問わず採用伴走支援。"
+    },
+    {
+      "category": "その他カテゴリ",
+      "subcategory": "システム開発 / DX",
+      "company": {
+        "name": "株式会社Oneplat",
+        "alias": "Oneplat①"
+      },
+      "contacts": [],
+      "links": [],
+      "pitch": "コンサル付き受託開発。基幹システム〜高難易度案件対応。"
+    },
+    {
+      "category": "その他カテゴリ",
+      "subcategory": "システム開発 / DX",
+      "company": {
+        "name": "株式会社Oneplat",
+        "alias": "Oneplat②"
+      },
+      "contacts": [],
+      "links": [],
+      "pitch": "請求書・納品書データ100%精度取得＋自動仕訳。経理工数大幅削減。"
+    }
+  ]
+}

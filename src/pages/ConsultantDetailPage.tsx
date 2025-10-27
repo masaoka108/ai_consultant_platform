@@ -29,6 +29,8 @@ export const ConsultantDetailPage: React.FC = () => {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [useWebRTC, setUseWebRTC] = useState(true); // WebRTC/フォールバック切り替え
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const recoSectionRef = useRef<HTMLDivElement>(null);
+  const prevRecoCountRef = useRef<number>(0);
 
   const consultant = consultants.find(c => c.id === id);
   
@@ -175,6 +177,18 @@ export const ConsultantDetailPage: React.FC = () => {
       setHasSpokenWelcome(true);
     }
   }, [consultant, messages.length, hasSpokenWelcome]);
+
+  // 紹介カードが新たに表示されたら、そのセクションへ自動スクロール
+  useEffect(() => {
+    const count = Array.isArray(state.recommendedIntroductions)
+      ? state.recommendedIntroductions.length
+      : 0;
+    if (count > 0 && count > prevRecoCountRef.current) {
+      // 新規にカードが増えたときのみスクロール
+      recoSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    prevRecoCountRef.current = count;
+  }, [state.recommendedIntroductions]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -500,13 +514,20 @@ export const ConsultantDetailPage: React.FC = () => {
 
         {/* 紹介候補（Realtimeからの推薦） */}
         {(state.recommendedIntroductions && state.recommendedIntroductions.length > 0) && (
-          <div className="mt-8 space-y-4">
+          <div ref={recoSectionRef} className="mt-8 space-y-4">
             <h2 className="text-xl font-bold text-gray-900">紹介候補</h2>
-            <div className="grid grid-cols-1 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {state.recommendedIntroductions.map((rec: any, idx: number) => (
                 <div key={idx} className="bg-white rounded-lg shadow p-4">
                   <div className="flex items-start justify-between">
-                    <div>
+                    <div className="w-full">
+                      {/* デバッグ: カードの会社名をコンソールに出す */}
+                      {console.log('🧪 rendering recommendation card:', rec?.company?.name)}
+                      <img
+                        src="/company_demo.jpg"
+                        alt="紹介デモ"
+                        className="w-full h-32 object-cover rounded mb-3"
+                      />
                       <div className="text-sm text-gray-500">{rec.category} / {rec.subcategory}</div>
                       <div className="text-lg font-semibold text-gray-900 mt-1">{rec.company?.name}</div>
                       {rec.company?.alias && (

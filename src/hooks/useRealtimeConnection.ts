@@ -20,6 +20,8 @@ interface RealtimeConnectionState {
   // 会話状態
   conversationPhase: 'questions' | 'hot-reading' | 'cold-reading' | 'subsidies' | 'summary' | 'recommendations';
   messageHistory: Array<{ role: 'user' | 'assistant'; content: string; timestamp: number }>;
+  // 紹介カード（複数想定）
+  recommendedIntroductions: any[];
   
   // エラー状態
   error: {
@@ -75,6 +77,35 @@ export const useRealtimeConnection = (): UseRealtimeConnectionReturn => {
   // RealtimeAPIClient のインスタンス
   const clientRef = useRef<RealtimeAPIClient | null>(null);
   const lastConsultantIdRef = useRef<string | null>(null);
+  // 紹介データのキャッシュ
+  const introductionsCacheRef = useRef<any[] | null>(null);
+  const loadIntroductions = useCallback(async () => {
+    // キャッシュが未設定 or 空配列ならロードを試みる
+    if (!introductionsCacheRef.current || introductionsCacheRef.current.length === 0) {
+      try {
+        const res = await fetch('/api/introductions');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        introductionsCacheRef.current = Array.isArray(data?.records) ? data.records : [];
+        console.log('🧪 introductions fetched via /api/introductions:', introductionsCacheRef.current.length);
+      } catch (err) {
+        console.warn('⚠️ fetch /api/introductions failed. Falling back to bundled JSON.', err);
+        try {
+          const data = await import('../..//data/introductions_network.json');
+          const records = (data as any)?.default?.records || (data as any)?.records || [];
+          introductionsCacheRef.current = Array.isArray(records) ? records : [];
+          console.log('🧪 introductions loaded via import fallback:', introductionsCacheRef.current.length);
+        } catch (e) {
+          console.error('❌ Failed to load introductions from local JSON as well:', e);
+          introductionsCacheRef.current = [];
+        }
+      }
+    } else {
+      console.log('🧪 introductions using cached:', introductionsCacheRef.current.length);
+    }
+    console.log('🧪 introductions final size:', introductionsCacheRef.current.length);
+    return introductionsCacheRef.current!;
+  }, []);
   
   // 状態管理
   const [state, setState] = useState<RealtimeConnectionState>({
@@ -88,6 +119,7 @@ export const useRealtimeConnection = (): UseRealtimeConnectionReturn => {
     isVoiceActive: false,
     conversationPhase: 'questions',
     messageHistory: [],
+    recommendedIntroductions: [],
     error: null,
     isFallbackMode: false,
     eventLog: []
@@ -147,7 +179,8 @@ export const useRealtimeConnection = (): UseRealtimeConnectionReturn => {
         session: null,
         consultantId: null,
         conversationPhase: 'questions',
-        messageHistory: []
+        messageHistory: [],
+        recommendedIntroductions: []
       }));
     });
 
@@ -194,6 +227,36 @@ export const useRealtimeConnection = (): UseRealtimeConnectionReturn => {
         ...prev, 
         messageHistory: client.getMessageHistory()
       }));
+    });
+
+    // RECOタグからの推薦受信 → 紹介カードに反映（追加・重複排除）
+    client.on('recommendationssuggested', async (data: { ids: string[] }) => {
+      try {
+        const ids = Array.isArray(data?.ids) ? data.ids : [];
+        console.log('🧪 recommendationssuggested event received. ids =', ids);
+        if (ids.length === 0) return;
+        const records = await loadIntroductions();
+        console.log('🧪 introductions records loaded:', Array.isArray(records) ? records.length : 0);
+        const idSet = new Set(ids);
+        const matched = records.filter((r: any) => {
+          const name = r?.company?.name;
+          const alias = r?.company?.alias;
+          return (name && idSet.has(name)) || (alias && idSet.has(alias));
+        });
+        console.log('🧪 matched introductions count:', matched.length, matched.map((m: any) => m?.company?.name));
+        if (matched.length === 0) return;
+        setState(prev => {
+          const existing = prev.recommendedIntroductions || [];
+          const keyOf = (r: any) => `${r?.company?.name || ''}::${r?.company?.alias || ''}`;
+          const map = new Map(existing.map((r: any) => [keyOf(r), r]));
+          matched.forEach((r: any) => map.set(keyOf(r), r));
+          const next = Array.from(map.values());
+          console.log('🧪 recommendedIntroductions updated. size =', next.length);
+          return { ...prev, recommendedIntroductions: next };
+        });
+      } catch (e) {
+        console.warn('⚠️ Failed to update recommendations:', e);
+      }
     });
 
     // エラーハンドリング

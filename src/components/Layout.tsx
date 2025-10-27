@@ -4,12 +4,21 @@ import { Users, History, LogOut } from 'lucide-react';
 
 interface LayoutProps {
   children: React.ReactNode;
+  fullscreen?: boolean;
 }
 
-export const Layout: React.FC<LayoutProps> = ({ children }) => {
+export const Layout: React.FC<LayoutProps> = ({ children, fullscreen = false }) => {
   const location = useLocation();
 
   const isActive = (path: string) => location.pathname === path;
+
+  if (fullscreen) {
+    return (
+      <div className="min-h-screen">
+        {children}
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">

@@ -33,7 +33,10 @@ export const ConsultantDetailPage: React.FC = () => {
   const prevRecoCountRef = useRef<number>(0);
 
   const consultant = consultants.find(c => c.id === id);
-  
+
+  // プロフィール画像のパスを設定（コンサルタントID=1の場合は専用画像を使用）
+  const avatarPath = id === '1' ? '/IKariwUZ_400x400.jpg' : consultant?.avatar;
+
   // WebRTCまたはフォールバックの状態を統一
   const isConnected = useWebRTC ? state.isConnected : hasSpokenWelcome;
   const currentPhase = useWebRTC ? state.conversationPhase : getPhaseFromMessageCount();
@@ -298,258 +301,126 @@ export const ConsultantDetailPage: React.FC = () => {
     );
   }
 
+  // 最新のメッセージを取得
+  const latestConsultantMessage = currentMessages
+    .filter(m => m.type === 'consultant' && m.content.trim())
+    .slice(-1)[0];
+  const latestUserMessage = currentMessages
+    .filter(m => m.type === 'user' && m.content.trim())
+    .slice(-1)[0];
+
   return (
-    <Layout>
-      <div className="max-w-7xl mx-auto">
-        {/* コンサルタント情報ヘッダー */}
-        <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-          <div className="flex items-start space-x-6">
-            <img
-              src={consultant.avatar}
-              alt={consultant.name}
-              className="w-20 h-20 rounded-full object-cover"
-            />
-            <div className="flex-1">
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">{consultant.name}</h1>
-              <p className="text-gray-600 mb-4">{consultant.experience}</p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <h3 className="font-semibold text-gray-900 mb-2">得意分野</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {consultant.specialties.map((specialty, index) => (
-                      <span
-                        key={index}
-                        className="px-3 py-1 bg-indigo-100 text-indigo-700 text-sm rounded-full"
-                      >
-                        {specialty}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <h3 className="font-semibold text-gray-900 mb-2">保有人脈</h3>
-                  <p className="text-gray-600 text-sm">{consultant.connections}</p>
-                </div>
-              </div>
-            </div>
+    <Layout fullscreen>
+      {/* 全画面ダークUI */}
+      <div className="min-h-screen relative overflow-hidden" style={{
+        background: 'radial-gradient(circle at 50% 40%, #2563eb 0%, #1e3a8a 30%, #1e293b 60%, #0f172a 100%)'
+      }}>
+        {/* 左上: 小さなプロフィール */}
+        <div className="absolute top-8 left-8 flex items-start space-x-2 z-10">
+          <img
+            src={avatarPath}
+            alt={consultant.name}
+            className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-lg"
+          />
+          <div className="text-white leading-tight">
+            <div className="text-[11px]">五味田 匡功</div>
           </div>
         </div>
 
-        {/* メインコンテンツエリア */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* 左側: 通話エリア */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* ビデオ画面 */}
-            <div className="bg-white rounded-xl shadow-sm h-[400px] flex flex-col">
-              <div className="relative bg-gray-900 rounded-t-xl overflow-hidden flex-1">
-                {/* 背景画像を常に表示 */}
-                <div 
-                  className="absolute inset-0 w-full h-full bg-cover bg-center bg-no-repeat"
-                  style={{ 
-                    backgroundImage: 'url(/gomita_san_thumbnail.png)',
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center'
-                  }}
-                />
-                
-                {/* 通話状態に関係なく背景画像のみ表示 */}
-                <div className="relative z-10 w-full h-full">
-                  {/* 背景画像がそのまま表示される */}
-                </div>
-
-                {/* 通話状態インジケーター */}
-                {isConnected && (
-                  <div className="absolute top-4 left-4">
-                    <div className="flex items-center space-x-2 bg-black bg-opacity-50 rounded-full px-3 py-1">
-                      <div className={`w-2 h-2 rounded-full ${
-                        useWebRTC 
-                          ? (state.isConnected ? 'bg-green-400' : 'bg-yellow-400')
-                          : 'bg-green-400'
-                      }`}></div>
-                      <span className="text-white text-sm">
-                        {useWebRTC 
-                          ? (state.isConnected ? 'リアルタイム通話中' : 'WebRTC接続中')
-                          : 'フォールバック通話中'
-                        }
-                      </span>
-                    </div>
-                  </div>
-                )}
-
-                {/* 音声出力インジケーター */}
-                {isConnected && (isSpeaking || state.isVoiceActive) && (
-                  <div className="absolute top-4 right-4">
-                    <div className="flex items-center space-x-2 bg-blue-500 bg-opacity-80 rounded-full px-3 py-1">
-                      <Volume2 className="text-white animate-pulse" size={16} />
-                      <span className="text-white text-sm">
-                        {useWebRTC ? 'AI応答中' : '話しています'}
-                      </span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* WebRTC音声コントロール */}
-            {useWebRTC && (
-              <RealtimeVoiceControls
-                isConnected={state.isConnected}
-                connectionState={state.connectionState}
-                isMuted={state.isMuted}
-                isRemoteMuted={state.isRemoteMuted}
-                audioLevel={state.audioLevel}
-                isVoiceActive={state.isVoiceActive}
-                conversationPhase={state.conversationPhase}
-                error={state.error}
-                isFallbackMode={state.isFallbackMode}
-                onStartCall={handleStartWebRTCCall}
-                onEndCall={handleEndWebRTCCall}
-                onToggleMute={actions.toggleMute}
-                onToggleRemoteMute={actions.toggleRemoteMute}
-                onVolumeChange={actions.setVolume}
-                onRetryConnection={handleRetryConnection}
-                onSwitchToFallback={handleSwitchToFallback}
-              />
-            )}
-
-            {/* フォールバック用の簡易コントロール */}
-            {!useWebRTC && isConnected && (
-              <div className="bg-white rounded-xl shadow-sm p-4">
-                <div className="flex items-center justify-center space-x-4">
-                  <button
-                    onClick={handleVoiceInput}
-                    disabled={isRecording}
-                    className={`p-4 rounded-full transition-colors ${
-                      isRecording
-                        ? 'bg-red-500 text-white animate-pulse'
-                        : 'bg-indigo-500 hover:bg-indigo-600 text-white'
-                    }`}
-                  >
-                    <Mic size={24} />
-                  </button>
-
-                  <button
-                    onClick={() => setUseWebRTC(true)}
-                    className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors text-sm"
-                  >
-                    WebRTCに切り替え
-                  </button>
-                </div>
-
-                {isRecording && (
-                  <div className="text-center mt-2">
-                    <p className="text-sm text-red-600">音声を録音中...</p>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* 右側: チャット履歴 */}
-          <div className="lg:col-span-1">
-            <div className="bg-white rounded-xl shadow-sm h-[600px] flex flex-col">
-              <div className="p-4 border-b border-gray-200">
-                <h3 className="font-semibold text-gray-900">会話履歴</h3>
-              </div>
-
-              {/* メッセージ一覧 */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0">
-                {currentMessages.filter(message => message.content.trim()).map((message) => (
-                  <div
-                    key={message.id}
-                    className={`flex items-start space-x-2 ${
-                      message.type === 'user' ? 'flex-row-reverse space-x-reverse' : ''
-                    }`}
-                  >
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                      message.type === 'user'
-                        ? 'bg-indigo-100 text-indigo-600'
-                        : 'bg-gray-100 text-gray-600'
-                    }`}>
-                      {message.type === 'user' ? <User size={14} /> : <Bot size={14} />}
-                    </div>
-                    <div className={`max-w-[200px] px-3 py-2 rounded-lg text-sm ${
-                      message.type === 'user'
-                        ? 'bg-indigo-600 text-white'
-                        : 'bg-gray-100 text-gray-900'
-                    }`}>
-                      <p>{message.content}</p>
-                      {message.isAudio && !useWebRTC && (
-                        <button
-                          onClick={playAudioFile}
-                          className="mt-1 text-xs opacity-70 hover:opacity-100 transition-opacity flex items-center space-x-1"
-                        >
-                          <Volume2 size={12} />
-                          <span>再生</span>
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ))}
-                <div ref={messagesEndRef} />
-              </div>
-
-              {/* テキスト入力エリア */}
-              <div className="p-4 border-t border-gray-200">
-                <div className="flex space-x-2">
-                  <input
-                    type="text"
-                    value={inputText}
-                    onChange={(e) => setInputText(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && handleSendMessage(inputText)}
-                    placeholder="メッセージを入力..."
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                  />
-                  <button
-                    onClick={() => handleSendMessage(inputText)}
-                    className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors"
-                  >
-                    <Send size={16} />
-                  </button>
-                </div>
-              </div>
-            </div>
+        {/* 中央: 大きなプロフィール画像と名前 */}
+        <div className="absolute top-28 left-1/2 transform -translate-x-1/2 flex flex-col items-center z-10">
+          {/* 単一円のプロフィール画像 */}
+          <img
+            src={avatarPath}
+            alt={consultant.name}
+            className="w-60 h-60 rounded-full object-cover border-[6px] border-white shadow-2xl"
+          />
+          <div className="mt-5 text-center">
+            <h1 className="text-3xl font-bold text-white tracking-wide">{consultant.name}</h1>
+            <p className="text-sm text-gray-200 mt-2">レリック社労士法人代表</p>
           </div>
         </div>
 
-        {/* 紹介候補（Realtimeからの推薦） */}
+        {/* 左側: コンサルタントのメッセージ（白い吹き出し） */}
+        <div className="absolute left-8 top-[45%] transform -translate-y-1/2 max-w-xs z-10">
+          <div className="mb-2 text-white text-xs">{consultant.name}</div>
+          <div className="bg-white rounded-2xl p-5 shadow-2xl">
+            <p className="text-gray-800 leading-relaxed text-xs">
+              {latestConsultantMessage?.content || 'ごちらこそ。今日の話を聞いて、"既存の人ではなく新しい村定者"を求めていることが明確になりました。良い出会いになるよう、全力でサポートします。今後ともよろしくお願いします。'}
+            </p>
+          </div>
+        </div>
+
+        {/* 右下: ユーザーのメッセージ（白い吹き出し） */}
+        <div className="absolute bottom-44 right-12 max-w-[280px] z-10">
+          <div className="text-right mb-2">
+            <span className="text-white text-sm">山田 太郎</span>
+          </div>
+          <div className="bg-white rounded-2xl p-4 shadow-2xl">
+            <p className="text-gray-800 leading-relaxed text-xs">
+              {latestUserMessage?.content || 'ありがとうございます。お願いします。'}
+            </p>
+          </div>
+        </div>
+
+        {/* 下部中央: 3つのボタン */}
+        <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 flex items-center space-x-8 z-10">
+          {/* Off ボタン */}
+          <div className="flex flex-col items-center">
+            <button
+              onClick={actions.toggleMute}
+              className="w-16 h-16 rounded-full flex items-center justify-center transition-all shadow-xl bg-gray-600 hover:bg-gray-500"
+            >
+              <MicOff className="text-white" size={24} />
+            </button>
+            <span className="text-white text-xs mt-2 font-medium">Off</span>
+          </div>
+
+          {/* On ボタン（中央・大きめ） */}
+          <div className="flex flex-col items-center">
+            <button
+              onClick={isConnected ? handleEndWebRTCCall : handleStartWebRTCCall}
+              className="w-20 h-20 rounded-full flex items-center justify-center transition-all shadow-xl bg-[#3b82f6] hover:bg-[#2563eb]"
+            >
+              <Phone className="text-white" size={32} />
+            </button>
+            <span className="text-white text-xs mt-2 font-medium">On</span>
+          </div>
+
+          {/* Cancel ボタン */}
+          <div className="flex flex-col items-center">
+            <button
+              onClick={handleEndWebRTCCall}
+              className="w-16 h-16 rounded-full flex items-center justify-center transition-all shadow-xl bg-red-500 hover:bg-red-600"
+            >
+              <PhoneOff className="text-white" size={24} />
+            </button>
+            <span className="text-white text-xs mt-2 font-medium">Cancel</span>
+          </div>
+        </div>
+
+        {/* エラー表示（必要時） */}
+        {state.error && (
+          <div className="absolute top-6 right-6 bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg z-20">
+            <p className="text-sm">{state.error.message}</p>
+          </div>
+        )}
+
+        {/* 紹介候補（Realtimeからの推薦） - オーバーレイ表示 */}
         {(state.recommendedIntroductions && state.recommendedIntroductions.length > 0) && (
-          <div ref={recoSectionRef} className="mt-8 space-y-4">
-            <h2 className="text-xl font-bold text-gray-900">紹介候補</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div ref={recoSectionRef} className="absolute top-20 right-6 max-w-md z-10">
+            <div className="bg-white rounded-xl shadow-xl p-4 space-y-4 max-h-[500px] overflow-y-auto">
+              <h2 className="text-lg font-bold text-gray-900">紹介候補</h2>
               {state.recommendedIntroductions.map((rec: any, idx: number) => (
-                <div key={idx} className="bg-white rounded-lg shadow p-4">
-                  <div className="flex items-start justify-between">
-                    <div className="w-full">
-                      {/* デバッグ: カードの会社名をコンソールに出す */}
-                      {console.log('🧪 rendering recommendation card:', rec?.company?.name)}
-                      <img
-                        src="/company_demo.jpg"
-                        alt="紹介デモ"
-                        className="w-full h-32 object-cover rounded mb-3"
-                      />
-                      <div className="text-sm text-gray-500">{rec.category} / {rec.subcategory}</div>
-                      <div className="text-lg font-semibold text-gray-900 mt-1">{rec.company?.name}</div>
-                      {rec.company?.alias && (
-                        <div className="text-xs text-gray-500">別表記: {rec.company.alias}</div>
-                      )}
-                      <div className="text-sm text-gray-700 mt-2">{rec.pitch}</div>
-                      {Array.isArray(rec.contacts) && rec.contacts.length > 0 && (
-                        <div className="mt-2 text-sm text-gray-600">
-                          担当: {rec.contacts.map((c: any) => `${c.role}: ${c.name}`).join(' / ')}
-                        </div>
-                      )}
-                      {Array.isArray(rec.links) && rec.links.length > 0 && (
-                        <div className="mt-2 text-sm">
-                          {rec.links.map((l: any, i: number) => (
-                            <a key={i} href={l.url || '#'} target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline mr-3">
-                              {l.label}
-                            </a>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
+                <div key={idx} className="border-b border-gray-200 pb-3 last:border-b-0">
+                  <img
+                    src="/company_demo.jpg"
+                    alt="紹介デモ"
+                    className="w-full h-24 object-cover rounded mb-2"
+                  />
+                  <div className="text-xs text-gray-500">{rec.category} / {rec.subcategory}</div>
+                  <div className="text-sm font-semibold text-gray-900 mt-1">{rec.company?.name}</div>
+                  <div className="text-xs text-gray-700 mt-1">{rec.pitch}</div>
                 </div>
               ))}
             </div>

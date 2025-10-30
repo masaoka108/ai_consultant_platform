@@ -341,27 +341,31 @@ export const ConsultantDetailPage: React.FC = () => {
           </div>
         </div>
 
-        {/* 左側: コンサルタントのメッセージ（白い吹き出し） */}
-        <div className="absolute left-8 top-[45%] transform -translate-y-1/2 max-w-xs z-10">
-          <div className="mb-2 text-white text-xs">{consultant.name}</div>
-          <div className="bg-white rounded-2xl p-5 shadow-2xl">
-            <p className="text-gray-800 leading-relaxed text-xs">
-              {latestConsultantMessage?.content || 'ごちらこそ。今日の話を聞いて、"既存の人ではなく新しい村定者"を求めていることが明確になりました。良い出会いになるよう、全力でサポートします。今後ともよろしくお願いします。'}
-            </p>
+        {/* 左側: コンサルタントのメッセージ（白い吹き出し） - メッセージがある場合のみ表示 */}
+        {latestConsultantMessage && (
+          <div className="absolute left-8 top-[45%] transform -translate-y-1/2 max-w-xs z-10">
+            <div className="mb-2 text-white text-xs">{consultant.name}</div>
+            <div className="bg-white rounded-2xl p-5 shadow-2xl">
+              <p className="text-gray-800 leading-relaxed text-xs">
+                {latestConsultantMessage.content}
+              </p>
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* 右下: ユーザーのメッセージ（白い吹き出し） */}
-        <div className="absolute bottom-44 right-12 max-w-[280px] z-10">
-          <div className="text-right mb-2">
-            <span className="text-white text-sm">山田 太郎</span>
+        {/* 右下: ユーザーのメッセージ（白い吹き出し） - メッセージがある場合のみ表示 */}
+        {latestUserMessage && (
+          <div className="absolute bottom-44 right-12 max-w-[280px] z-10">
+            <div className="text-right mb-2">
+              <span className="text-white text-sm">山田 太郎</span>
+            </div>
+            <div className="bg-white rounded-2xl p-4 shadow-2xl">
+              <p className="text-gray-800 leading-relaxed text-xs">
+                {latestUserMessage.content}
+              </p>
+            </div>
           </div>
-          <div className="bg-white rounded-2xl p-4 shadow-2xl">
-            <p className="text-gray-800 leading-relaxed text-xs">
-              {latestUserMessage?.content || 'ありがとうございます。お願いします。'}
-            </p>
-          </div>
-        </div>
+        )}
 
         {/* 下部中央: 3つのボタン */}
         <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 flex items-center space-x-8 z-10">

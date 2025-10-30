@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__puppeteer__puppeteer_navigate",
+      "Read(//Users/okamuramasahiro/Downloads/**)",
+      "mcp__puppeteer__puppeteer_screenshot",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nfeat: BLUEISHデザインへ完全リニューアル\n\n- 全画面ダークUIに変更（青みがかったラジアルグラデーション背景）\n- 中央に大きなプロフィール画像と名前・肩書を配置\n- コンサルタントとユーザーのメッセージを吹き出し形式で常時表示\n- 下部に3つのボタン（Off/On/Cancel）を配置\n- Layoutコンポーネントにfullscreenモードを追加\n- 肩書を「レリック社労士法人代表」に変更\n- サムネイル画像をIKariwUZ_400x400.jpgに差し替え\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(git push:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "puppeteer": {
+      "command": "npx",
+      "args": ["@modelcontextprotocol/server-puppeteer"]
+    }
+  },
+  "toolPermissions": {
+    "mcp__puppeteer": "session",
+    "mcp__puppeteer__puppeteer_navigate": "allow",
+    "mcp__puppeteer__puppeteer_screenshot": "allow",
+    "mcp__puppeteer__puppeteer_click": "session",
+    "mcp__puppeteer__puppeteer_type": "session",
+    "mcp__puppeteer__puppeteer_evaluate": "session"
+  }
+}

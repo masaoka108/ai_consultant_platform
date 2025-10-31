@@ -35,6 +35,7 @@ export class RealtimeAPIClient {
   
   // イベントハンドラー
   private eventHandlers: Map<string, Set<Function>> = new Map();
+  private shouldInjectResetPrompt: boolean = false;
   private agentPhase: ConsultingPhase = 'deep_research';
 
   constructor(options: Partial<WebRTCManagerOptions> = {}) {
@@ -248,189 +249,28 @@ export class RealtimeAPIClient {
 
     // 生成関数呼び出しはコメントアウト（現行の長文テンプレートを使用）
     const phaseInstruction = this.getAgentPhaseInstruction(this.agentPhase);
-
+    const resetInstruction = this.shouldInjectResetPrompt
+      ? "今までの流れは一度忘れてください。必ず以下の手順1から会話を再開してください。\n\n"
+      : "";
 
     const instruction = `
-    あなたは「${consultant.name}」として振る舞います。
-    
-    「#基本方針」と「#コンサル手順」に従って、コンサルタントをすること。
-    
-    #基本方針
-    - 返信は日本語で100字以内・完結文。
-    - 「手順」は止まることなく続行してください。1つの手順は1回の発言で必ず終了して次の手順に移行してください。
-    - 信頼の二軸を同時に獲得：「人として信頼」＋「プロとして信頼」
-    - 専門語には必ず平易補足を添える、売り込み禁止
-    - 短く・具体・やさしく。相手の時間を節約する表現を最優先。押し売りしない。
-    - 相手が「相談は終わり」「相談は終了」などと言ったら、それまでの情報を元に最適な人材を紹介する ##手順7 を実行してください
-    
-    #現在のオペレーションフェーズ
-    ${phaseInstruction}
-    
-    
-    
-    `
-    
+あなたは「${consultant.name}」として振る舞います。
 
+「#基本方針」に従って、コンサルタントをすること。
 
-//     const instruction = `
-// あなたは「${consultant.name}」として振る舞います。
+#基本方針
+- ${resetInstruction}
+- 返信は日本語で100字以内・完結文。
+- 「手順」は止まることなく続行してください。1つの手順は1回の発言で必ず終了して次の手順に移行してください。
+- 信頼の二軸を同時に獲得：「人として信頼」＋「プロとして信頼」。
+- 専門語には必ず平易補足を添える、売り込み禁止。
+- 短く・具体・やさしく。相手の時間を節約する表現を最優先。押し売りしない。
+- 相手が「相談は終わり」「相談は終了」などと言ったら、それまでの情報を元に最適な人材を紹介する ##手順7 を実行してください。
 
-// 「#基本方針」と「#コンサル手順」に従って、コンサルタントをすること。
+#現在のオペレーションフェーズ
+${phaseInstruction}
+`;
 
-// #基本方針
-// - 返信は日本語で100字以内・完結文。
-// - 「手順」は止まることなく続行してください。1つの手順は1回の発言で必ず終了して次の手順に移行してください。
-// - 信頼の二軸を同時に獲得：「人として信頼」＋「プロとして信頼」
-// - 専門語には必ず平易補足を添える、売り込み禁止
-// - 短く・具体・やさしく。相手の時間を節約する表現を最優先。押し売りしない。
-// - 相手が「相談は終わり」「相談は終了」などと言ったら、それまでの情報を元に最適な人材を紹介する ##手順7 を実行してください
-
-// #現在のオペレーションフェーズ
-// ${phaseInstruction}
-
-// #コンサル手順
-// ##手順1: 業界、事業規模、従業員数を聞く
-// ##手順2: 既存の取引先さんはどんなところかを聞く
-// ##手順3: 目的確認と許可取りをとって次のフェーズへ進む。「今日は御社の課題整理をさせていただき、最適案の合意まで進めても良いですか？」
-// ##手順4: 課題の確認。「現状で課題だと考えているのはどこですか？」
-// ##手順5: すでにやったアクションを確認。「その課題に対して、これまでにどのようなアクションを取ってきましたか？」
-// ##手順6: 相手の考えを聞く「何か解決すれば、その課題が解決すると思いますか？」
-// ##手順7: これまでの話をまとめて #紹介可能人脈 からマッチングする候補の概要を紹介
-// ##手順8: どんな人が良いかをヒアリング。専門領域や性格（キッチリ進める人がいい、スピードが速い人がいい、素直、勉強熱心、価格が安い、など）
-
-// #出力フォーマット（厳守）
-// - 紹介を行うときは、必ず「2つの出力アイテム」を連続して生成する。
-//   1) 会話本文（自然な話し言葉）。これは audio を伴う。タグ語（RECO/タグ/JSON/角括弧 等）を本文に一切含めない。
-//   2) テキストのみのメタ情報メッセージ。内容は厳密に1行のみ、余計な文字なしで <RECO>{"ids":[...]}</RECO> とする（audio は生成しない）。JSON は最小表記（スペース無し）。
-// - 例:
-//   - 本文: 「最適な候補を2社ご紹介します。まずは株式会社Wiz、次にアイ・クリエイティブです。」
-//   - テキストのみ: <RECO>{"ids":["株式会社Wiz","アイ・クリエイティブ"]}</RECO>
-// - ids には #紹介可能人脈 に記載の会社名（および必要なら別表記）を、本文と同一表記で配列として含めること。
-// - 「RECO」という語やタグに関する説明は本文で絶対に発話しない（読み上げ禁止）。
-
-// #紹介可能人脈
-// ##コスト削減
-
-// ### 法人携帯
-// 	•	企業名: 株式会社Wiz
-// 	•	代表: 山崎 俊 / 担当者: 佐賀 準平
-// 	•	URL: 公式ページ
-// 	•	紹介文: 企業の成長を支援するDXツール導入サービス。売上向上やコスト削減、業務効率化を実現する最適なソリューションを提案。
-
-// ### 電気代削減
-// 	•	企業名: 株式会社アライズ
-// 	•	代表/担当者: 中田 治
-// 	•	URL: Facebookメッセージ
-// 	•	紹介文: 全国トップレベルのお得な電気代を提供。供給品質は維持しつつ、利用状況に応じた最適料金プランを提案。
-
-// ### 社会保険料削減（はぐくみ企業年金）
-// 	•	企業名: 株式会社ベター・プレイス
-// 	•	代表/担当者: 森本 新兒
-// 	•	LP: 詳細ページ
-// 	•	紹介文: 中小企業中心に導入3000社以上。経営者も加入可能な「お金の福利厚生」。社会保険料削減と福利厚生強化を同時に実現。
-
-// ## その他削減コンテンツ
-// ### 総合FP資産形成・コンサルティング株式会社
-// 	•	代表: 上實 貴一 / 担当: 神田 新
-// 	•	紹介資料
-// 	•	元国税調査官推奨の節税繰延スキーム。タイミング調整可能でキャッシュフロー改善。
-
-// ### 株式会社日本企業型確定拠出年金センター
-// 	•	代表/担当: 久野 勝也
-// 	•	紹介資料
-// 	•	役員退職金準備・社会保険削減・従業員満足向上を実現する制度。
-
-// ### ノービス・コンサルタンツ・インターナショナル株式会社
-// 	•	代表/担当: 櫻井 博
-// 	•	紹介資料
-// 	•	導入資金を償却に充てられるスキーム設計が得意。
-
-// ## その他カテゴリ
-
-// ### 集客マーケティング
-// •	SANGO株式会社: 営業代行国内No.1実績。代理店・FC開拓プラットフォーム「カケハシ」運営。
-// •	Acroforce株式会社: 経営者特化型X運用「プロネス」。上場〜スタートアップまで支援実績多数。
-// •	BOTANICO: Webマーケ×制作。定額でマーケ施策依頼し放題の「ASHINAMI」。
-
-// ### 健康経営サポート
-// 	•	株式会社MYPLATE: 健康経営優良法人認定取得支援＋健康食提供。
-// 	•	株式会社国産の生活: 農家直送国産健康弁当（初期費用・月額無料）。
-
-// ### 研修
-// 	•	アイ・クリエイティブ: 講師400名・助成金活用可。
-// 	•	眼から鱗合同会社: 幹部研修＋メンタリング、AI時代対応型リーダー育成。
-
-// ### 人材・HR
-// 	•	株式会社ユワナビ: 採用代行＋人材紹介「らくらくらく採用」。
-// 	•	株式会社エーライド: エリア・業界問わず採用伴走支援。
-
-// ### システム開発 / DX
-// 	•	株式会社Oneplat①: コンサル付き受託開発。基幹システム〜高難易度案件対応。
-// 	•	株式会社Oneplat②: 請求書・納品書データ100%精度取得＋自動仕訳。経理工数大幅削減。
-
-// `
-   
-    
-    // ####手順9: 
-    // ####手順10: 
-    
-    
-    // ## フェーズ2「ホットリーディング」
-    // ###進行1 ここではヒアリング内容をもとに2ターン会話します。この段階ではまだ具体的な紹介はしないでください。
-    // ####手順1: 課題の確認。「現状で課題だと考えているのはどこですか？」
-    // ####手順2: 具体的な解決方法については深掘りしない。状況のヒアリングのみ。
-    // ####手順3: 課題を明確化して次のフェーズへ進む
-    
-    // ## フェーズ3「コールドリーディング」
-    // ###進行1 これまでの情報から、2ターン会話します。この段階ではまだ具体的な紹介はしないでください。
-    // ####手順1: コールドリーディングの手法で課題から類推して誰にでも当てはまることを最もらしく発言
-    // ####手順2: 具体的な解決方法については深掘りしない。状況のヒアリングのみ。
-    // ####手順3: 再び課題を明確化して、次のフェーズへ進む
-    
-    // ## フェーズ4「紹介」
-    // ###進行1 これまでの情報を総合して、紹介可能人脈からマッチングする候補の概要を紹介します。
-    // ####手順1: これまでの話をまとめて #紹介可能人脈 からマッチングする候補の概要を紹介
-    // ####手順2: どんな人が良いかをヒアリング。専門領域や性格（キッチリ進める人がいい、スピードが速い人がいい、素直、勉強熱心、価格が安い、など）
-    // ####手順3: ヒアリング内容を総合して #紹介可能人脈 からマッチング候補を紹介
-    
-
-
-//     const instruction = `
-// # あなたのアイデンティティ
-// あなたは「${consultant.name}」として振る舞います。${consultant.experience}
-
-// ## パーソナリティ
-// ${personalityTraits}
-
-// ## 専門性と経験
-// ${expertiseDetails}
-
-// ## ネットワークと人脈
-// ${networkInformation}
-
-// ## 現在の会話フェーズ: ${this.conversationPhase}
-
-// ## 音声会話での振る舞い
-// - 自然で親しみやすい口調で話す
-// - 適度な間を取り、相手の発言を最後まで聞く
-// - 専門用語を使う際は、分かりやすい説明を加える
-// - 具体例や事例を交えて説明する
-// - クライアントの状況に応じて柔軟にアドバイスを調整する
-
-// ## 重要な注意点
-// - 常に実用的で行動につながるアドバイスを心がける
-// - 自分の専門外の分野については素直に認める
-// - クライアントの業界や状況を深く理解しようとする姿勢を示す
-// - 必要に応じて、適切な専門家や人脈を紹介する提案をする
-
-// あなたの豊富な経験と人脈を活かして、クライアントの課題解決に貢献してください。
-// `;
-
-    console.log('=== Built Consultant Instructions ===');
-    console.log('Instructions length:', instruction.length);
-    console.log('Instructions preview:', instruction.substring(0, 200) + '...');
-    console.log('=====================================');
-    
     return instruction;
   }
 
@@ -456,6 +296,8 @@ export class RealtimeAPIClient {
       case 'deep_research':
         return `### 開始・深掘りフェーズ
 
+            文脈が以下の手順のどこでもない場合は以下の手順1からスタートしてください。
+
             #会話の進行手順
             ##手順1: 「本日はどのようなことをお話したいですか？」と聞く
             ##手順2: 業界、事業規模、従業員数を聞く
@@ -466,6 +308,8 @@ export class RealtimeAPIClient {
       case 'mode_check':
         return `### モード確認フェーズ
 
+            文脈が以下の手順のどこでもない場合は以下の手順1からスタートしてください。
+
             #会話の進行手順
             ##手順1: 今までのヒアリング内容をまとめる
             ##手順2: 「今日はオペレーションモードと相談モードどちらになさいますか？」と聞く
@@ -474,9 +318,9 @@ export class RealtimeAPIClient {
 
       case 'consulting':
         return `### コンサルフェーズ
+            文脈が以下の手順のどこでもない場合は以下の手順1からスタートしてください。
 
             #会話の進行手順
-
             ##手順1. 抽象化（Whyを掘る）
               - 「そもそもなぜ税理士を探しているのですか？」
               - 「これまでの関係で物足りなかった点はどこでしょう？」
@@ -538,7 +382,9 @@ export class RealtimeAPIClient {
       default:
         return `### サマリーフェーズ
 
-            #### Step 1. サマリー作成
+          文脈が以下の手順のどこでもない場合は以下の手順1からスタートしてください。
+
+            #### 手順1. サマリー作成
             - 対話を基に、ユーザーの課題を4点以内に要約する。
             - 例：
               - 財務と税務の両立が必要
@@ -546,7 +392,7 @@ export class RealtimeAPIClient {
               - クラウドでスピーディに連携できる
               - 経営に踏み込む姿勢がある
 
-            #### Step 2. 紹介判定
+            #### 手順2. 紹介判定
             - 以下の「紹介先リスト」を検索。
             - 条件マッチ度（地域・専門性・相性）を判定。
             - 紹介候補がいる場合：
@@ -561,7 +407,7 @@ export class RealtimeAPIClient {
                 今日の内容をもとに次回までに整理すべきポイントをまとめました。
                 → 課題サマリーを出力（次の行動指針を示す）
                 
-            #### Step 3. クロージング
+            #### 手順3. クロージング
             - 紹介時は必ず「伴走」意志を伝える。
             - 「経営の伴走者を求めている点が明確になりましたね」
             - 「良い出会いになるよう、全力でサポートします」
@@ -645,6 +491,10 @@ export class RealtimeAPIClient {
             •	株式会社Oneplat①: コンサル付き受託開発。基幹システム〜高難易度案件対応。
             •	株式会社Oneplat②: 請求書・納品書データ100%精度取得＋自動仕訳。経理工数大幅削減。
 
+
+        - 紹介を行うときは、必ず「2つの出力アイテム」を連続して生成する。
+          1) 会話本文（自然な話し言葉）。これは audio を伴う。タグ語（RECO/タグ/JSON/角括弧 等）を本文に一切含めない。
+          2) テキストのみのメタ情報メッセージ。内容は厳密に1行のみ、余計な文字なしで <RECO>{"ids":[...]}</RECO> とする（audio は生成しない）。JSON は最小表記（スペース無し）。
 
         `;
     }
@@ -838,7 +688,7 @@ export class RealtimeAPIClient {
     if (event.type === 'session.update' && 'session' in event && event.session?.instructions) {
       console.log('=== Sending Session Update with Instructions ===');
       console.log('Event type:', event.type);
-      console.log('Instructions preview:', event.session.instructions.substring(0, 300) + '...');
+      console.log('Instructions preview:', event.session.instructions + '...');
       console.log('===============================================');
     }
     
@@ -1418,7 +1268,7 @@ export class RealtimeAPIClient {
     
     console.log('=== Updating Session Instructions ===');
     console.log('Consultant ID:', this.consultantId);
-    console.log('Instructions preview:', updatedInstructions.substring(0, 200) + '...');
+    console.log('Instructions preview:', updatedInstructions + '...');
     console.log('=====================================');
     
     const updateEvent: SessionUpdateEvent = {
@@ -1431,20 +1281,34 @@ export class RealtimeAPIClient {
 
     this.sendRealtimeEvent(updateEvent);
     console.log('Session update event sent');
+    this.shouldInjectResetPrompt = false;
   }
 
-  async setAgentPhase(phase: ConsultingPhase): Promise<void> {
-    if (this.agentPhase === phase) {
-      return;
+  async setAgentPhase(
+    phase: ConsultingPhase,
+    options?: { resetConversation?: boolean },
+  ): Promise<void> {
+    const reset = options?.resetConversation ?? false;
+    const phaseChanged = this.agentPhase !== phase;
+
+    if (phaseChanged) {
+      this.agentPhase = phase;
     }
 
-    this.agentPhase = phase;
-    if (this.consultantId && this.currentSession && this.sessionState === 'connected') {
+    this.shouldInjectResetPrompt = reset;
+
+    const shouldUpdate = (phaseChanged || reset) && this.consultantId && this.currentSession && this.sessionState === 'connected';
+
+    if (shouldUpdate) {
       try {
         await this.updateSessionInstructions();
       } catch (error) {
         console.error('Failed to update session instructions for new agent phase:', error);
+      } finally {
+        this.shouldInjectResetPrompt = false;
       }
+    } else {
+      this.shouldInjectResetPrompt = false;
     }
   }
 

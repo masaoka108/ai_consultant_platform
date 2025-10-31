@@ -77,6 +77,7 @@ export interface PhaseManagerCallbacks {
     previous: ConsultingPhase;
     current: ConsultingPhase;
     transitionId: string;
+    metadata?: Record<string, unknown>;
   }) => void;
   onTransitionDeclined?: (info: {
     phaseCandidate: ConsultingPhase;

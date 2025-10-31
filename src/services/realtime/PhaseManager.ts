@@ -75,6 +75,7 @@ export class PhaseManager {
       previous,
       current: nextPhase,
       transitionId: 'forced',
+      metadata: { forced: true },
     });
   }
 

@@ -219,7 +219,7 @@ export const useRealtimeConnection = (): UseRealtimeConnectionReturn => {
           phaseTransitionId: transitionId,
         }));
       },
-      onPhaseChanged: ({ current, transitionId }) => {
+      onPhaseChanged: ({ current, transitionId, metadata }) => {
         setState(prev => ({
           ...prev,
           agentPhase: current,
@@ -231,7 +231,9 @@ export const useRealtimeConnection = (): UseRealtimeConnectionReturn => {
         }));
         if (clientRef.current) {
           clientRef.current
-            .setAgentPhase(current)
+            .setAgentPhase(current, {
+              resetConversation: transitionId === 'forced' || metadata?.forced === true,
+            })
             .catch((error: unknown) => {
               console.warn('Failed to propagate agent phase to RealtimeAPIClient:', error);
             });
@@ -461,7 +463,6 @@ export const useRealtimeConnection = (): UseRealtimeConnectionReturn => {
       const client = createRealtimeClient();
       clientRef.current = client;
       setupRealtimePipeline(client);
-      await client.setAgentPhase(DEFAULT_AGENT_PHASE);
       lastConsultantIdRef.current = consultantId;
       
       console.log('Setting connection state to connecting...');
@@ -569,13 +570,6 @@ export const useRealtimeConnection = (): UseRealtimeConnectionReturn => {
 
   const forceAgentPhase = useCallback((phase: ConsultingPhase) => {
     phaseManagerRef.current?.forceTransition(phase);
-    if (clientRef.current) {
-      clientRef.current
-        .setAgentPhase(phase)
-        .catch((error: unknown) => {
-          console.warn('Failed to force agent phase on RealtimeAPIClient:', error);
-        });
-    }
   }, []);
 
   // 音声バッファ操作

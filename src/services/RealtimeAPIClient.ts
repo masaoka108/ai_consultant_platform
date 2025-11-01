@@ -37,6 +37,7 @@ export class RealtimeAPIClient {
   private eventHandlers: Map<string, Set<Function>> = new Map();
   private shouldInjectResetPrompt: boolean = false;
   private agentPhase: ConsultingPhase = 'deep_research';
+  private sessionSummary: string | null = null;
 
   constructor(options: Partial<WebRTCManagerOptions> = {}) {
     // WebRTCManagerを初期化
@@ -242,24 +243,25 @@ export class RealtimeAPIClient {
    */
   private async buildConsultantInstructions(consultantId: string): Promise<string> {
     const consultant = await this.getConsultantData(consultantId);
-    
+
     if (!consultant) {
       throw new Error(`Consultant with ID ${consultantId} not found`);
     }
 
-    // 生成関数呼び出しはコメントアウト（現行の長文テンプレートを使用）
     const phaseInstruction = this.getAgentPhaseInstruction(this.agentPhase);
     const resetInstruction = this.shouldInjectResetPrompt
-      ? "今までの流れは一度忘れてください。必ず以下の手順1から会話を再開してください。\n\n"
-      : "";
+      ? '今までの流れは一度忘れてください。必ず以下の手順1から会話を再開してください。\n\n'
+      : '';
+    const summarySection = this.sessionSummary
+      ? `#前回までの要約\n${this.sessionSummary}\n\n`
+      : '';
 
     const instruction = `
 あなたは「${consultant.name}」として振る舞います。
 
-「#基本方針」に従って、コンサルタントをすること。
+「#基本方針」と「#コンサル手順」に従って、コンサルタントをすること。
 
 #基本方針
-- ${resetInstruction}
 - 返信は日本語で100字以内・完結文。
 - 「手順」は止まることなく続行してください。1つの手順は1回の発言で必ず終了して次の手順に移行してください。
 - 信頼の二軸を同時に獲得：「人として信頼」＋「プロとして信頼」。
@@ -267,8 +269,16 @@ export class RealtimeAPIClient {
 - 短く・具体・やさしく。相手の時間を節約する表現を最優先。押し売りしない。
 - 相手が「相談は終わり」「相談は終了」などと言ったら、それまでの情報を元に最適な人材を紹介する ##手順7 を実行してください。
 
-#現在のオペレーションフェーズ
-${phaseInstruction}
+${summarySection}#現在のオペレーションフェーズ
+${resetInstruction}${phaseInstruction}
+
+#コンサル手順
+- フェーズ指示に従い、適切なヒアリングと提案を行ってください。
+
+#出力フォーマット（厳守）
+- 紹介を行うときは、必ず「2つの出力アイテム」を連続して生成する。
+  1) 会話本文（自然な話し言葉）。これは audio を伴う。タグ語（RECO/タグ/JSON/角括弧 等）を本文に一切含めない。
+  2) テキストのみのメタ情報メッセージ。内容は厳密に1行のみ、余計な文字なしで <RECO>{"ids":[...]}</RECO> とする（audio は生成しない）。JSON は最小表記（スペース無し）。
 `;
 
     return instruction;
@@ -321,30 +331,28 @@ ${phaseInstruction}
             文脈が以下の手順のどこでもない場合は以下の手順1からスタートしてください。
 
             #会話の進行手順
-            ##手順1. 抽象化（Whyを掘る）
+            ##手順1. 抽象化する。（Whyを掘る）
+              - 以下は発話例
               - 「そもそもなぜ税理士を探しているのですか？」
               - 「これまでの関係で物足りなかった点はどこでしょう？」
-              - 「最終的に、どんな関わり方を理想とされていますか？」
-              - → *目的・背景を引き出す*
 
-            ##手順2. 共感・リフレーミング
+            ##手順2. 共感・リフレーミングする。感情を言語化し、上位概念で整理する
+              - 以下は発話例
               - 「数字の処理はしてもらえても、“経営の味方”ではなかったんですね。」
               - 「節税だけでなく、“利益設計と資金設計”を一緒に考えたいということですね。」
-              - → *感情を言語化し、上位概念で整理する*
 
-            ##手順3. 構造化（Howを形に）
-              - 「例えば『毎月の数字を一緒に見る』『融資交渉を支援してほしい』など、
-                  具体的にどんな関わり方を求めていますか？」
+            ##手順3. 構造化する。（Howを形に）ニーズを具体化し、分類軸を提示する。
+              - 以下は発話例
               - 「補助金や助成金の提案も含めたトータルサポートがあると理想ですか？」
-              - → *ニーズを具体化し、分類軸を提示する*
 
             ##手順4. タイプ整理（知識提示）
+              - 以下は発話例
               - 「税理士にもタイプがありまして、“節税特化型”と“財務思考型”があります。
                   現在の状況ですと、経営全体を見てくれる“財務思考型”が向いていると思います。」
 
             ##手順5. まとめ・確認
+              - 以下は発話例
               - 「つまり、今お求めなのは“資金繰りや成長を一緒に考えてくれる税理士”という理解で合っていますか？」
-              - → *言語化支援と共感の再確認*
 
 
             ## 4. 専門知識（税理士評価の軸）
@@ -357,7 +365,7 @@ ${phaseInstruction}
             | 事業承継支援 | “資産承継”ではなく“経営承継”視点を持つか |
             | 補助金・助成金対応 | 提案・申請・法認定の一連をサポートできるか |
 
-            **例：**
+            **対話例：**
 
             AI「はい、では相談モードで進めますね。  
             そもそもなぜ税理士を探しているんですか？」
@@ -1302,6 +1310,9 @@ ${phaseInstruction}
     if (shouldUpdate) {
       try {
         await this.updateSessionInstructions();
+        if (reset) {
+          await this.sendPhaseKickoffPrompt(this.agentPhase);
+        }
       } catch (error) {
         console.error('Failed to update session instructions for new agent phase:', error);
       } finally {
@@ -1314,6 +1325,65 @@ ${phaseInstruction}
 
   getAgentPhase(): ConsultingPhase {
     return this.agentPhase;
+  }
+
+  setSessionSummary(summary: string | null): void {
+    this.sessionSummary = summary ? summary.trim() : null;
+  }
+
+  primeAgentPhase(
+    phase: ConsultingPhase,
+    options?: { resetConversation?: boolean },
+  ): void {
+    this.agentPhase = phase;
+    this.shouldInjectResetPrompt = options?.resetConversation ?? false;
+  }
+
+  private getPhaseKickoffPrompt(phase: ConsultingPhase): string | null {
+    switch (phase) {
+      case 'deep_research':
+        return 'では、まず現在の事業内容や課題を簡単に教えてください。';
+      case 'mode_check':
+        return 'ここまでの内容を簡単にまとめます。今日はオペレーションモードと相談モードのどちらで進めますか？';
+      case 'consulting':
+        return 'ここまでのお話を踏まえて、整理された課題と仮説を共有します。まずは大枠の論点からお伝えします。';
+      case 'summary':
+        return 'これまでの議論を要約します。重要なポイントを3つ程度に絞ってお伝えします。';
+      default:
+        return null;
+    }
+  }
+
+  private async simulateUserContinuation(): Promise<void> {
+    const event: RealtimeEvent = {
+      type: 'conversation.item.create',
+      event_id: this.generateEventId(),
+      item: {
+        type: 'message',
+        role: 'user',
+        content: [
+          { type: 'input_text', text: '続けてお願いします。' },
+        ],
+      },
+    };
+
+    this.sendRealtimeEvent(event);
+  }
+
+  private async sendPhaseKickoffPrompt(phase: ConsultingPhase): Promise<void> {
+    const prompt = this.getPhaseKickoffPrompt(phase);
+    if (!prompt) return;
+
+    const event: ResponseCreateEvent = {
+      type: 'response.create',
+      event_id: this.generateEventId(),
+      response: {
+        modalities: ['text', 'audio'],
+        instructions: prompt,
+      },
+    };
+
+    this.sendRealtimeEvent(event);
   }
 
   /**

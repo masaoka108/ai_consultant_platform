@@ -17,6 +17,26 @@ const AGENT_PHASE_PROMPTS: Record<ConsultingPhase, string> = {
   summary: 'サマリーフェーズに移行してもよろしいですか？',
 };
 
+const summarizeMessageHistory = (
+  input: Array<{ role: 'user' | 'assistant'; content: string; timestamp: number }>,
+): string | null => {
+  if (!input.length) return null;
+
+  const recent = input.slice(-10);
+  const lines = recent
+    .map((msg) => {
+      const speaker = msg.role === 'user' ? 'ユーザー' : 'アシスタント';
+      const text = msg.content.replace(/\s+/g, ' ').trim();
+      if (!text) return null;
+      const truncated = text.length > 160 ? `${text.slice(0, 160)}…` : text;
+      return `${speaker}: ${truncated}`;
+    })
+    .filter((line): line is string => Boolean(line));
+
+  if (!lines.length) return null;
+  return lines.join('\n');
+};
+
 interface RealtimeConnectionState {
   // 接続状態
   isConnected: boolean;
@@ -81,7 +101,7 @@ interface RealtimeConnectionActions {
   cancelResponse: () => void;
   changePhase: (phase: RealtimeConnectionState['conversationPhase']) => void;
   requestAgentPhase: (phase: ConsultingPhase) => void;
-  forceAgentPhase: (phase: ConsultingPhase) => void;
+  forceAgentPhase: (phase: ConsultingPhase) => Promise<void>;
   
   // バッファ制御
   commitAudioBuffer: () => void;
@@ -229,10 +249,12 @@ export const useRealtimeConnection = (): UseRealtimeConnectionReturn => {
           phaseTransitionReason: undefined,
           phaseTransitionId: transitionId,
         }));
-        if (clientRef.current) {
+        const shouldReset = transitionId === 'forced' || metadata?.forced === true;
+        const shouldSkip = metadata?.forced === true;
+        if (!shouldSkip && clientRef.current) {
           clientRef.current
             .setAgentPhase(current, {
-              resetConversation: transitionId === 'forced' || metadata?.forced === true,
+              resetConversation: shouldReset,
             })
             .catch((error: unknown) => {
               console.warn('Failed to propagate agent phase to RealtimeAPIClient:', error);
@@ -568,9 +590,62 @@ export const useRealtimeConnection = (): UseRealtimeConnectionReturn => {
     phaseManagerRef.current?.requestTransition(phase);
   }, []);
 
-  const forceAgentPhase = useCallback((phase: ConsultingPhase) => {
-    phaseManagerRef.current?.forceTransition(phase);
-  }, []);
+  const forceAgentPhase = useCallback(
+    async (phase: ConsultingPhase): Promise<void> => {
+      if (!state.consultantId) {
+        return;
+      }
+
+      const summary = summarizeMessageHistory(state.messageHistory);
+      const consultantId = state.consultantId;
+
+      try {
+        await teardownRealtimePipeline();
+
+        const client = createRealtimeClient();
+        clientRef.current = client;
+        setupRealtimePipeline(client);
+        client.setSessionSummary(summary);
+        client.primeAgentPhase(phase, { resetConversation: true });
+        lastConsultantIdRef.current = consultantId;
+
+        setState(prev => ({
+          ...prev,
+          connectionState: 'connecting',
+          isConnected: false,
+          error: null,
+          agentPhase: phase,
+          pendingAgentPhase: null,
+          phaseTransitionStatus: 'idle',
+          phaseTransitionAttempt: 0,
+          phaseTransitionReason: undefined,
+          phaseTransitionId: null,
+        }));
+
+        await client.initializeSession(consultantId);
+        await client.setAgentPhase(phase, { resetConversation: true });
+        await client.simulateUserContinuation();
+        await client.sendPhaseKickoffPrompt(phase);
+
+        phaseManagerRef.current?.forceTransition(phase);
+      } catch (error) {
+        console.error('Failed to restart session with new phase:', error);
+        setState(prev => ({
+          ...prev,
+          connectionState: 'error',
+          error: {
+            type: 'connection_error',
+            message:
+              error instanceof Error
+                ? error.message
+                : 'フェーズ再適用に失敗しました',
+            suggestions: ['ネットワーク状況を確認してください', '再度フェーズ切替をお試しください'],
+          },
+        }));
+      }
+    },
+    [createRealtimeClient, setupRealtimePipeline, state.consultantId, state.messageHistory, teardownRealtimePipeline],
+  );
 
   // 音声バッファ操作
   const commitAudioBuffer = useCallback(() => {

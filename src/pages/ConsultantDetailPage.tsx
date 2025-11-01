@@ -151,7 +151,7 @@ export const ConsultantDetailPage: React.FC = () => {
   };
 
   const handleForceAgentPhase = (phase: ConsultingPhase) => {
-    actions.forceAgentPhase(phase);
+    void actions.forceAgentPhase(phase);
   };
 
   const handleImmediateAgentPhase = (phase: ConsultingPhase) => {

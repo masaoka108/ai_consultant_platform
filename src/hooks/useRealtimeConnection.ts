@@ -129,7 +129,7 @@ export const useRealtimeConnection = (): UseRealtimeConnectionReturn => {
   const initializeClient = useCallback(() => {
     if (!clientRef.current) {
       clientRef.current = new RealtimeAPIClient({
-        tokenServiceUrl: '/session',
+        tokenServiceUrl: '/api/session',
         enableFallback: true
       });
       

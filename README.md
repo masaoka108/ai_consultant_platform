@@ -56,6 +56,7 @@ AIパワード・ビジネスコンサルティングプラットフォーム - 
 npm install
 
 # 環境変数の設定
+cd server
 cp .env.example .env
 # .envファイルにOpenAI APIキーを設定
 ```

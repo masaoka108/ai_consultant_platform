@@ -368,38 +368,58 @@ export const ConsultantDetailPage: React.FC = () => {
         )}
 
         {/* 下部中央: 3つのボタン */}
-        <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 flex items-center space-x-8 z-10">
-          {/* Off ボタン */}
-          <div className="flex flex-col items-center">
-            <button
-              onClick={actions.toggleMute}
-              className="w-16 h-16 rounded-full flex items-center justify-center transition-all shadow-xl bg-gray-600 hover:bg-gray-500"
-            >
-              <MicOff className="text-white" size={24} />
-            </button>
-            <span className="text-white text-xs mt-2 font-medium">Off</span>
-          </div>
+        <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 flex flex-col items-center z-10">
+          {/* 接続ステータス表示 */}
+          {(state.connectionState === 'connecting' || state.connectionState === 'connected') && (
+            <div className="mb-4 flex items-center space-x-2">
+              {state.connectionState === 'connecting' && (
+                <span className="text-white text-sm font-medium animate-pulse">
+                  Now Connecting...
+                </span>
+              )}
+              {state.connectionState === 'connected' && (
+                <div className="flex items-center space-x-2">
+                  <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                  <span className="text-white text-sm font-medium">Connected</span>
+                </div>
+              )}
+            </div>
+          )}
 
-          {/* On ボタン（中央・大きめ） */}
-          <div className="flex flex-col items-center">
-            <button
-              onClick={isConnected ? handleEndWebRTCCall : handleStartWebRTCCall}
-              className="w-20 h-20 rounded-full flex items-center justify-center transition-all shadow-xl bg-[#3b82f6] hover:bg-[#2563eb]"
-            >
-              <Phone className="text-white" size={32} />
-            </button>
-            <span className="text-white text-xs mt-2 font-medium">On</span>
-          </div>
+          {/* ボタン群 */}
+          <div className="flex items-center space-x-8">
+            {/* Off ボタン */}
+            <div className="flex flex-col items-center">
+              <button
+                onClick={actions.toggleMute}
+                className="w-16 h-16 rounded-full flex items-center justify-center transition-all shadow-xl bg-gray-600 hover:bg-gray-500"
+              >
+                <MicOff className="text-white" size={24} />
+              </button>
+              <span className="text-white text-xs mt-2 font-medium">Off</span>
+            </div>
 
-          {/* Cancel ボタン */}
-          <div className="flex flex-col items-center">
-            <button
-              onClick={handleEndWebRTCCall}
-              className="w-16 h-16 rounded-full flex items-center justify-center transition-all shadow-xl bg-red-500 hover:bg-red-600"
-            >
-              <PhoneOff className="text-white" size={24} />
-            </button>
-            <span className="text-white text-xs mt-2 font-medium">Cancel</span>
+            {/* On ボタン（中央・大きめ） */}
+            <div className="flex flex-col items-center">
+              <button
+                onClick={isConnected ? handleEndWebRTCCall : handleStartWebRTCCall}
+                className="w-20 h-20 rounded-full flex items-center justify-center transition-all shadow-xl bg-[#3b82f6] hover:bg-[#2563eb]"
+              >
+                <Phone className="text-white" size={32} />
+              </button>
+              <span className="text-white text-xs mt-2 font-medium">On</span>
+            </div>
+
+            {/* Cancel ボタン */}
+            <div className="flex flex-col items-center">
+              <button
+                onClick={handleEndWebRTCCall}
+                className="w-16 h-16 rounded-full flex items-center justify-center transition-all shadow-xl bg-red-500 hover:bg-red-600"
+              >
+                <PhoneOff className="text-white" size={24} />
+              </button>
+              <span className="text-white text-xs mt-2 font-medium">Cancel</span>
+            </div>
           </div>
         </div>
 

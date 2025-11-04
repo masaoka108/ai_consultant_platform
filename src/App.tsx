@@ -4,6 +4,17 @@ import { LoginPage } from './pages/LoginPage';
 import { ConsultantsPage } from './pages/ConsultantsPage';
 import { ConsultantDetailPage } from './pages/ConsultantDetailPage';
 import { HistoryPage } from './pages/HistoryPage';
+import { useAuth } from './contexts/AuthContext';
+
+const PrivateRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
+  const { isAuthenticated } = useAuth();
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return children;
+};
 
 function App() {
   return (
@@ -11,9 +22,30 @@ function App() {
       <Routes>
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/consultants" element={<ConsultantsPage />} />
-        <Route path="/consultants/:id" element={<ConsultantDetailPage />} />
-        <Route path="/history" element={<HistoryPage />} />
+        <Route
+          path="/consultants"
+          element={(
+            <PrivateRoute>
+              <ConsultantsPage />
+            </PrivateRoute>
+          )}
+        />
+        <Route
+          path="/consultants/:id"
+          element={(
+            <PrivateRoute>
+              <ConsultantDetailPage />
+            </PrivateRoute>
+          )}
+        />
+        <Route
+          path="/history"
+          element={(
+            <PrivateRoute>
+              <HistoryPage />
+            </PrivateRoute>
+          )}
+        />
       </Routes>
     </Router>
   );
